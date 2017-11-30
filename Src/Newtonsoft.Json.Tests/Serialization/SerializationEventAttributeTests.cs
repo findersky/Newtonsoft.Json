@@ -37,11 +37,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -104,7 +100,10 @@ namespace Newtonsoft.Json.Tests.Serialization
                 Assert.AreEqual(expectedError, obj.Member5);
 
                 DerivedSerializationEventTestObject derivedObj = obj as DerivedSerializationEventTestObject;
-                if (derivedObj != null) Assert.AreEqual("This value was set after deserialization.", derivedObj.Member7);
+                if (derivedObj != null)
+                {
+                    Assert.AreEqual("This value was set after deserialization.", derivedObj.Member7);
+                }
             }
         }
 
@@ -273,7 +272,7 @@ namespace Newtonsoft.Json.Tests.Serialization
 }", json);
         }
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50)
+#if !(PORTABLE || DNXCORE50) || NETSTANDARD2_0
         public class SerializationEventContextTestObject
         {
             public string TestMember { get; set; }
@@ -304,16 +303,14 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 #endif
 
-#if !(PORTABLE || DNXCORE50)
+#if !(PORTABLE || DNXCORE50) || NETSTANDARD2_0
+        [Test]
         public void WhenSerializationErrorDetectedBySerializer_ThenCallbackIsCalled()
         {
             // Verify contract is properly finding our callback
             var resolver = new DefaultContractResolver().ResolveContract(typeof(FooEvent));
 
-#pragma warning disable 612,618
-            Debug.Assert(resolver.OnError != null);
-            Debug.Assert(resolver.OnError == typeof(FooEvent).GetMethod("OnError", BindingFlags.Instance | BindingFlags.NonPublic));
-#pragma warning restore 612,618
+            Assert.AreEqual(resolver.OnErrorCallbacks.Count, 1);
 
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
@@ -326,7 +323,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             var foo = serializer.Deserialize<FooEvent>(new JsonTextReader(new StringReader("{ Id: 25 }")));
 
             // When fixed, this would pass.
-            Debug.Assert(foo.Identifier == 25);
+            Assert.AreEqual(25, foo.Identifier);
         }
 #endif
 

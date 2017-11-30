@@ -43,7 +43,7 @@ namespace Newtonsoft.Json.Schema
 
         internal ValidationEventArgs(JsonSchemaException ex)
         {
-            ValidationUtils.ArgumentNotNull(ex, "ex");
+            ValidationUtils.ArgumentNotNull(ex, nameof(ex));
             _ex = ex;
         }
 
@@ -51,27 +51,18 @@ namespace Newtonsoft.Json.Schema
         /// Gets the <see cref="JsonSchemaException"/> associated with the validation error.
         /// </summary>
         /// <value>The JsonSchemaException associated with the validation error.</value>
-        public JsonSchemaException Exception
-        {
-            get { return _ex; }
-        }
+        public JsonSchemaException Exception => _ex;
 
         /// <summary>
         /// Gets the path of the JSON location where the validation error occurred.
         /// </summary>
         /// <value>The path of the JSON location where the validation error occurred.</value>
-        public string Path
-        {
-            get { return _ex.Path; }
-        }
+        public string Path => _ex.Path;
 
         /// <summary>
         /// Gets the text description corresponding to the validation error.
         /// </summary>
         /// <value>The text description.</value>
-        public string Message
-        {
-            get { return _ex.Message; }
-        }
+        public string Message => _ex.Message;
     }
 }

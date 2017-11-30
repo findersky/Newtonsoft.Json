@@ -33,25 +33,13 @@ namespace Newtonsoft.Json.Utilities
         private readonly int _startIndex;
         private readonly int _length;
 
-        public char this[int i]
-        {
-            get { return _chars[i]; }
-        }
+        public char this[int i] => _chars[i];
 
-        public char[] Chars
-        {
-            get { return _chars; }
-        }
+        public char[] Chars => _chars;
 
-        public int StartIndex
-        {
-            get { return _startIndex; }
-        }
+        public int StartIndex => _startIndex;
 
-        public int Length
-        {
-            get { return _length; }
-        }
+        public int Length => _length;
 
         public StringReference(char[] chars, int startIndex, int length)
         {
@@ -68,11 +56,6 @@ namespace Newtonsoft.Json.Utilities
 
     internal static class StringReferenceExtensions
     {
-        public static int IndexOf(this StringReference s, char c)
-        {
-            return IndexOf(s, c, 0, 0);
-        }
-
         public static int IndexOf(this StringReference s, char c, int startIndex, int length)
         {
             int index = Array.IndexOf(s.Chars, c, s.StartIndex + startIndex, length);

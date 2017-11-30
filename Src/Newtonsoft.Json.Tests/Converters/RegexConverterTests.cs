@@ -31,11 +31,7 @@ using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Utilities;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -52,6 +48,18 @@ namespace Newtonsoft.Json.Tests.Converters
         public class RegexTestClass
         {
             public Regex Regex { get; set; }
+        }
+
+        [Test]
+        public void WriteJsonNull()
+        {
+            StringWriter sw = new StringWriter();
+            JsonTextWriter jsonWriter = new JsonTextWriter(sw);
+
+            RegexConverter converter = new RegexConverter();
+            converter.WriteJson(jsonWriter, null, null);
+
+            StringAssert.AreEqual(@"null", sw.ToString());
         }
 
         [Test]
@@ -118,6 +126,7 @@ namespace Newtonsoft.Json.Tests.Converters
             Assert.AreEqual(RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture, r.Regex.Options);
         }
 
+#pragma warning disable 618
         [Test]
         public void SerializeToBson()
         {
@@ -134,19 +143,6 @@ namespace Newtonsoft.Json.Tests.Converters
             string bson = BytesToHex(ms.ToArray());
 
             Assert.AreEqual(expected, bson);
-        }
-
-        [Test]
-        public void DeserializeFromText()
-        {
-            string json = @"{
-  ""Pattern"": ""abc"",
-  ""Options"": 513
-}";
-
-            Regex newRegex = JsonConvert.DeserializeObject<Regex>(json, new RegexConverter());
-            Assert.AreEqual("abc", newRegex.ToString());
-            Assert.AreEqual(RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, newRegex.Options);
         }
 
         [Test]
@@ -213,6 +209,20 @@ namespace Newtonsoft.Json.Tests.Converters
             Assert.AreEqual("/", c.Regex.ToString());
             Assert.AreEqual(RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.ExplicitCapture, c.Regex.Options);
         }
+#pragma warning restore 618
+
+        [Test]
+        public void DeserializeFromText()
+        {
+            string json = @"{
+  ""Pattern"": ""abc"",
+  ""Options"": 513
+}";
+
+            Regex newRegex = JsonConvert.DeserializeObject<Regex>(json, new RegexConverter());
+            Assert.AreEqual("abc", newRegex.ToString());
+            Assert.AreEqual(RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, newRegex.Options);
+        }
 
         [Test]
         public void ConvertEmptyRegexJson()
@@ -231,6 +241,21 @@ namespace Newtonsoft.Json.Tests.Converters
             RegexTestClass newRegex = JsonConvert.DeserializeObject<RegexTestClass>(json, new RegexConverter());
             Assert.AreEqual("", newRegex.Regex.ToString());
             Assert.AreEqual(RegexOptions.None, newRegex.Regex.Options);
+        }
+
+        public class SimpleClassWithRegex
+        {
+            public Regex RegProp { get; set; }
+        }
+
+        [Test]
+        public void DeserializeNullRegex()
+        {
+            string json = JsonConvert.SerializeObject(new SimpleClassWithRegex { RegProp = null });
+            Assert.AreEqual(@"{""RegProp"":null}", json);
+
+            SimpleClassWithRegex obj = JsonConvert.DeserializeObject<SimpleClassWithRegex>(json);
+            Assert.AreEqual(null, obj.RegProp);
         }
     }
 }

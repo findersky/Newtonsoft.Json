@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET35 || NET20 || PORTABLE || DNXCORE50)
+#if !(NET40 || NET35 || NET20 || PORTABLE || DNXCORE50) || NETSTANDARD1_3 || NETSTANDARD2_0
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -34,11 +34,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -56,6 +52,7 @@ namespace Newtonsoft.Json.Tests.Documentation
     [TestFixture]
     public class ReadingAndWritingJsonTests : TestFixtureBase
     {
+        [Test]
         public void ReadingAndWritingJsonText()
         {
             #region ReadingAndWritingJsonText
@@ -113,9 +110,13 @@ namespace Newtonsoft.Json.Tests.Documentation
             while (reader.Read())
             {
                 if (reader.Value != null)
+                {
                     Console.WriteLine("Token: {0}, Value: {1}", reader.TokenType, reader.Value);
+                }
                 else
+                {
                     Console.WriteLine("Token: {0}", reader.TokenType);
+                }
             }
 
             // Token: StartObject
@@ -134,6 +135,7 @@ namespace Newtonsoft.Json.Tests.Documentation
             #endregion
         }
 
+        [Test]
         public void ReadingAndWritingJsonLinq()
         {
             #region ReadingAndWritingJsonLinq
@@ -148,6 +150,8 @@ namespace Newtonsoft.Json.Tests.Documentation
             Console.WriteLine(p.Name);
             // John Smith
             #endregion
+
+            Assert.AreEqual("John Smith", p.Name);
         }
     }
 }

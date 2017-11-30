@@ -25,7 +25,7 @@
 
 using System;
 using System.Collections.Generic;
-#if NET20
+#if !HAVE_LINQ
 using Newtonsoft.Json.Utilities.LinqBridge;
 #else
 using System.Linq;
@@ -69,7 +69,9 @@ namespace Newtonsoft.Json.Schema
             JsonSchema schema = LoadedSchemas.SingleOrDefault(s => string.Equals(s.Id, reference, StringComparison.Ordinal));
 
             if (schema == null)
+            {
                 schema = LoadedSchemas.SingleOrDefault(s => string.Equals(s.Location, reference, StringComparison.Ordinal));
+            }
 
             return schema;
         }

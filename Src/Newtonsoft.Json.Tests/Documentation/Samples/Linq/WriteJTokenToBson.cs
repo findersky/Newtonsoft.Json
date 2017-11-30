@@ -35,6 +35,7 @@ using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
@@ -42,6 +43,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
     [TestFixture]
     public class WriteJTokenToBson : TestFixtureBase
     {
+#pragma warning disable 618
         [Test]
         public void Example()
         {
@@ -66,5 +68,6 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
 
             Assert.AreEqual("KQAAAAJuYW1lMQAHAAAAdmFsdWUxAAJuYW1lMgAHAAAAdmFsdWUyAAA=", data);
         }
+#pragma warning restore 618
     }
 }

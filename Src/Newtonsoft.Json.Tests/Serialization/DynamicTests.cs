@@ -37,16 +37,13 @@ using System.Text;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
 using Newtonsoft.Json.Utilities;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Serialization
@@ -104,7 +101,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(dynamicObject.ChildObject.Text, d.ChildObject.Text);
         }
 
-#if !(PORTABLE || PORTABLE40)
+#if !(PORTABLE || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void SerializeDynamicObjectWithObjectTracking()
         {
@@ -120,11 +117,13 @@ namespace Newtonsoft.Json.Tests.Serialization
             string json = JsonConvert.SerializeObject(o, Formatting.Indented, new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.All,
+#pragma warning disable 618
                 TypeNameAssemblyFormat = FormatterAssemblyStyle.Full
+#pragma warning restore 618
             });
 
-            string dynamicChildObjectTypeName = ReflectionUtils.GetTypeName(typeof(DynamicChildObject), FormatterAssemblyStyle.Full, null);
-            string expandoObjectTypeName = ReflectionUtils.GetTypeName(typeof(ExpandoObject), FormatterAssemblyStyle.Full, null);
+            string dynamicChildObjectTypeName = ReflectionUtils.GetTypeName(typeof(DynamicChildObject), TypeNameAssemblyFormatHandling.Full, null);
+            string expandoObjectTypeName = ReflectionUtils.GetTypeName(typeof(ExpandoObject), TypeNameAssemblyFormatHandling.Full, null);
 
             StringAssert.AreEqual(@"{
   ""$type"": """ + expandoObjectTypeName + @""",
@@ -140,7 +139,9 @@ namespace Newtonsoft.Json.Tests.Serialization
             dynamic n = JsonConvert.DeserializeObject(json, null, new JsonSerializerSettings
             {
                 TypeNameHandling = TypeNameHandling.All,
+#pragma warning disable 618
                 TypeNameAssemblyFormat = FormatterAssemblyStyle.Full
+#pragma warning restore 618
             });
 
             CustomAssert.IsInstanceOfType(typeof(ExpandoObject), n);

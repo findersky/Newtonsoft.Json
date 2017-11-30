@@ -39,23 +39,31 @@ namespace Newtonsoft.Json.Utilities
     {
         public static bool ValueEquals(object objA, object objB)
         {
-            if (objA == null && objB == null)
+            if (objA == objB)
+            {
                 return true;
-            if (objA != null && objB == null)
+            }
+            if (objA == null || objB == null)
+            {
                 return false;
-            if (objA == null && objB != null)
-                return false;
+            }
 
             // comparing an Int32 and Int64 both of the same value returns false
             // make types the same then compare
             if (objA.GetType() != objB.GetType())
             {
                 if (ConvertUtils.IsInteger(objA) && ConvertUtils.IsInteger(objB))
+                {
                     return Convert.ToDecimal(objA, CultureInfo.CurrentCulture).Equals(Convert.ToDecimal(objB, CultureInfo.CurrentCulture));
+                }
                 else if ((objA is double || objA is float || objA is decimal) && (objB is double || objB is float || objB is decimal))
+                {
                     return MathUtils.ApproxEquals(Convert.ToDouble(objA, CultureInfo.CurrentCulture), Convert.ToDouble(objB, CultureInfo.CurrentCulture));
+                }
                 else
+                {
                     return false;
+                }
             }
 
             return objA.Equals(objB);
@@ -71,7 +79,9 @@ namespace Newtonsoft.Json.Utilities
         public static string ToString(object value)
         {
             if (value == null)
+            {
                 return "{null}";
+            }
 
             return (value is string) ? @"""" + value.ToString() + @"""" : value.ToString();
         }
@@ -80,13 +90,17 @@ namespace Newtonsoft.Json.Utilities
         {
             int lengthCompare = a1.Length.CompareTo(a2.Length);
             if (lengthCompare != 0)
+            {
                 return lengthCompare;
+            }
 
             for (int i = 0; i < a1.Length; i++)
             {
                 int valueCompare = a1[i].CompareTo(a2[i]);
                 if (valueCompare != 0)
+                {
                     return valueCompare;
+                }
             }
 
             return 0;
@@ -94,18 +108,14 @@ namespace Newtonsoft.Json.Utilities
 
         public static string GetPrefix(string qualifiedName)
         {
-            string prefix;
-            string localName;
-            GetQualifiedNameParts(qualifiedName, out prefix, out localName);
+            GetQualifiedNameParts(qualifiedName, out string prefix, out _);
 
             return prefix;
         }
 
         public static string GetLocalName(string qualifiedName)
         {
-            string prefix;
-            string localName;
-            GetQualifiedNameParts(qualifiedName, out prefix, out localName);
+            GetQualifiedNameParts(qualifiedName, out _, out string localName);
 
             return localName;
         }
@@ -129,10 +139,14 @@ namespace Newtonsoft.Json.Utilities
         internal static string FormatValueForPrint(object value)
         {
             if (value == null)
+            {
                 return "{null}";
+            }
 
             if (value is string)
+            {
                 return @"""" + value + @"""";
+            }
 
             return value.ToString();
         }

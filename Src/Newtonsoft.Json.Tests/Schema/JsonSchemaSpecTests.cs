@@ -24,7 +24,7 @@
 #endregion
 
 #pragma warning disable 618
-#if !(DNXCORE50 || NETFX_CORE)
+#if !(DNXCORE50)
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -60,7 +60,7 @@ namespace Newtonsoft.Json.Tests.Schema
     [TestFixture]
     public class JsonSchemaSpecTests : TestFixtureBase
     {
-        [TestCaseSourceAttribute("GetSpecTestDetails")]
+        [TestCaseSourceAttribute(nameof(GetSpecTestDetails))]
         public void SpecTest(JsonSchemaSpecTest jsonSchemaSpecTest)
         {
             JsonSchema s = JsonSchema.Read(jsonSchemaSpecTest.Schema.CreateReader());
@@ -72,7 +72,7 @@ namespace Newtonsoft.Json.Tests.Schema
             Assert.AreEqual(jsonSchemaSpecTest.IsValid, v, jsonSchemaSpecTest.TestCaseDescription + " - " + jsonSchemaSpecTest.TestDescription + " - errors: " + string.Join(", ", errorMessages));
         }
 
-        public IList<JsonSchemaSpecTest> GetSpecTestDetails()
+        public static IList<JsonSchemaSpecTest> GetSpecTestDetails()
         {
             IList<JsonSchemaSpecTest> specTests = new List<JsonSchemaSpecTest>();
 
@@ -119,5 +119,6 @@ namespace Newtonsoft.Json.Tests.Schema
         }
     }
 }
+
 #endif
 #pragma warning restore 618

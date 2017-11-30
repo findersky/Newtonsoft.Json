@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET35 || NET20 || PORTABLE || DNXCORE50)
+#if !(NET40 || NET35 || NET20 || PORTABLE || DNXCORE50) || NETSTANDARD1_3 || NETSTANDARD2_0
 #pragma warning disable 618
 using System;
 using System.Collections.Generic;
@@ -35,11 +35,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -186,5 +182,6 @@ namespace Newtonsoft.Json.Tests.Documentation
         }
     }
 }
+
 #pragma warning restore 618
 #endif

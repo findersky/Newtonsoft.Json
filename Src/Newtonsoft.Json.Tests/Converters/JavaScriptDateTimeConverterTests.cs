@@ -25,11 +25,7 @@
 
 using System;
 using System.Collections.Generic;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -227,9 +223,13 @@ namespace Newtonsoft.Json.Tests.Converters
         {
             DateTime? d = (DateTime?)value;
             if (d == null)
+            {
                 writer.WriteNull();
+            }
             else
+            {
                 writer.WriteValue(d.Value.Ticks);
+            }
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)

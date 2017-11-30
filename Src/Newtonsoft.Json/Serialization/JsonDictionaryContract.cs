@@ -30,7 +30,7 @@ using System.Reflection;
 using Newtonsoft.Json.Utilities;
 using System.Collections;
 
-#if NET20
+#if !HAVE_LINQ
 using Newtonsoft.Json.Utilities.LinqBridge;
 #endif
 
@@ -42,17 +42,6 @@ namespace Newtonsoft.Json.Serialization
     public class JsonDictionaryContract : JsonContainerContract
     {
         /// <summary>
-        /// Gets or sets the property name resolver.
-        /// </summary>
-        /// <value>The property name resolver.</value>
-        [Obsolete("PropertyNameResolver is obsolete. Use DictionaryKeyResolver instead.")]
-        public Func<string, string> PropertyNameResolver
-        {
-            get { return DictionaryKeyResolver; }
-            set { DictionaryKeyResolver = value; }
-        }
-
-        /// <summary>
         /// Gets or sets the dictionary key resolver.
         /// </summary>
         /// <value>The dictionary key resolver.</value>
@@ -62,13 +51,13 @@ namespace Newtonsoft.Json.Serialization
         /// Gets the <see cref="System.Type"/> of the dictionary keys.
         /// </summary>
         /// <value>The <see cref="System.Type"/> of the dictionary keys.</value>
-        public Type DictionaryKeyType { get; private set; }
+        public Type DictionaryKeyType { get; }
 
         /// <summary>
         /// Gets the <see cref="System.Type"/> of the dictionary values.
         /// </summary>
         /// <value>The <see cref="System.Type"/> of the dictionary values.</value>
-        public Type DictionaryValueType { get; private set; }
+        public Type DictionaryValueType { get; }
 
         internal JsonContract KeyContract { get; set; }
 
@@ -79,7 +68,7 @@ namespace Newtonsoft.Json.Serialization
 
         private Func<object> _genericTemporaryDictionaryCreator;
 
-        internal bool ShouldCreateWrapper { get; private set; }
+        internal bool ShouldCreateWrapper { get; }
 
         private readonly ConstructorInfo _parameterizedConstructor;
 
@@ -91,7 +80,9 @@ namespace Newtonsoft.Json.Serialization
             get
             {
                 if (_parameterizedCreator == null)
+                {
                     _parameterizedCreator = JsonTypeReflector.ReflectionDelegateFactory.CreateParameterizedConstructor(_parameterizedConstructor);
+                }
 
                 return _parameterizedCreator;
             }
@@ -103,8 +94,8 @@ namespace Newtonsoft.Json.Serialization
         /// <value>The function used to create the object.</value>
         public ObjectConstructor<object> OverrideCreator
         {
-            get { return _overrideCreator; }
-            set { _overrideCreator = value; }
+            get => _overrideCreator;
+            set => _overrideCreator = value;
         }
 
         /// <summary>
@@ -113,10 +104,7 @@ namespace Newtonsoft.Json.Serialization
         /// <value><c>true</c> if the creator has a parameter with the dictionary values; otherwise, <c>false</c>.</value>
         public bool HasParameterizedCreator { get; set; }
 
-        internal bool HasParameterizedCreatorInternal
-        {
-            get { return (HasParameterizedCreator || _parameterizedCreator != null || _parameterizedConstructor != null); }
-        }
+        internal bool HasParameterizedCreatorInternal => (HasParameterizedCreator || _parameterizedCreator != null || _parameterizedConstructor != null);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JsonDictionaryContract"/> class.
@@ -136,20 +124,24 @@ namespace Newtonsoft.Json.Serialization
                 valueType = _genericCollectionDefinitionType.GetGenericArguments()[1];
 
                 if (ReflectionUtils.IsGenericDefinition(UnderlyingType, typeof(IDictionary<,>)))
+                {
                     CreatedType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
+                }
 
-#if !(NET40 || NET35 || NET20 || PORTABLE40)
+#if HAVE_READ_ONLY_COLLECTIONS
                 IsReadOnlyOrFixedSize = ReflectionUtils.InheritsGenericDefinition(underlyingType, typeof(ReadOnlyDictionary<,>));
 #endif
             }
-#if !(NET40 || NET35 || NET20 || PORTABLE40)
+#if HAVE_READ_ONLY_COLLECTIONS
             else if (ReflectionUtils.ImplementsGenericDefinition(underlyingType, typeof(IReadOnlyDictionary<,>), out _genericCollectionDefinitionType))
             {
                 keyType = _genericCollectionDefinitionType.GetGenericArguments()[0];
                 valueType = _genericCollectionDefinitionType.GetGenericArguments()[1];
 
                 if (ReflectionUtils.IsGenericDefinition(UnderlyingType, typeof(IReadOnlyDictionary<,>)))
+                {
                     CreatedType = typeof(ReadOnlyDictionary<,>).MakeGenericType(keyType, valueType);
+                }
 
                 IsReadOnlyOrFixedSize = true;
             }
@@ -159,14 +151,19 @@ namespace Newtonsoft.Json.Serialization
                 ReflectionUtils.GetDictionaryKeyValueTypes(UnderlyingType, out keyType, out valueType);
 
                 if (UnderlyingType == typeof(IDictionary))
+                {
                     CreatedType = typeof(Dictionary<object, object>);
+                }
             }
 
             if (keyType != null && valueType != null)
             {
-                _parameterizedConstructor = CollectionUtils.ResolveEnumerableCollectionConstructor(CreatedType, typeof(KeyValuePair<,>).MakeGenericType(keyType, valueType));
+                _parameterizedConstructor = CollectionUtils.ResolveEnumerableCollectionConstructor(
+                    CreatedType,
+                    typeof(KeyValuePair<,>).MakeGenericType(keyType, valueType),
+                    typeof(IDictionary<,>).MakeGenericType(keyType, valueType));
 
-#if !(NET35 || NET20)
+#if HAVE_FSHARP_TYPES
                 if (!HasParameterizedCreatorInternal && underlyingType.Name == FSharpUtils.FSharpMapTypeName)
                 {
                     FSharpUtils.EnsureInitialized(underlyingType.Assembly());
@@ -183,27 +180,26 @@ namespace Newtonsoft.Json.Serialization
 #if (NET20 || NET35)
             if (DictionaryValueType != null && ReflectionUtils.IsNullableType(DictionaryValueType))
             {
-                Type tempDictioanryType;
-
                 // bug in .NET 2.0 & 3.5 that Dictionary<TKey, Nullable<TValue>> throws an error when adding null via IDictionary[key] = object
                 // wrapper will handle calling Add(T) instead
-                if (ReflectionUtils.InheritsGenericDefinition(CreatedType, typeof(Dictionary<,>), out tempDictioanryType))
+                if (ReflectionUtils.InheritsGenericDefinition(CreatedType, typeof(Dictionary<,>), out _))
                 {
                     ShouldCreateWrapper = true;
                 }
             }
 #endif
 
-#if !(NET20 || NET35 || NET40)
-            Type immutableCreatedType;
-            ObjectConstructor<object> immutableParameterizedCreator;
-            if (ImmutableCollectionsUtils.TryBuildImmutableForDictionaryContract(underlyingType, DictionaryKeyType, DictionaryValueType, out immutableCreatedType, out immutableParameterizedCreator))
+            if (ImmutableCollectionsUtils.TryBuildImmutableForDictionaryContract(
+                underlyingType,
+                DictionaryKeyType,
+                DictionaryValueType,
+                out Type immutableCreatedType,
+                out ObjectConstructor<object> immutableParameterizedCreator))
             {
                 CreatedType = immutableCreatedType;
                 _parameterizedCreator = immutableParameterizedCreator;
                 IsReadOnlyOrFixedSize = true;
             }
-#endif
         }
 
         internal IWrappedDictionary CreateWrapper(object dictionary)

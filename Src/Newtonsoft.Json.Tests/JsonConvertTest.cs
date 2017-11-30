@@ -24,11 +24,13 @@
 #endregion
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using Newtonsoft.Json.Schema;
-#if !(NET20 || NET35 || PORTABLE40 || PORTABLE)
+#if !(NET20 || NET35 || PORTABLE40 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0
 using System.Numerics;
 #endif
 using System.Runtime.Serialization;
@@ -42,17 +44,15 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Tests.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
+using Newtonsoft.Json.Tests.TestObjects.Organization;
 using Newtonsoft.Json.Utilities;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests
@@ -462,36 +462,36 @@ namespace Newtonsoft.Json.Tests
         {
             string result;
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("How now brown cow?", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("How now brown cow?", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""How now brown cow?""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("How now 'brown' cow?", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("How now 'brown' cow?", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""How now 'brown' cow?""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("How now <brown> cow?", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("How now <brown> cow?", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""How now <brown> cow?""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("How \r\nnow brown cow?", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("How \r\nnow brown cow?", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""How \r\nnow brown cow?""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007""", result);
 
             result =
-                JavaScriptUtils.ToEscapedJavaScriptString("\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013", '"', true);
+                JavaScriptUtils.ToEscapedJavaScriptString("\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013""", result);
 
             result =
                 JavaScriptUtils.ToEscapedJavaScriptString(
-                    "\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f ", '"', true);
+                    "\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f ", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f """, result);
 
             result =
                 JavaScriptUtils.ToEscapedJavaScriptString(
-                    "!\"#$%&\u0027()*+,-./0123456789:;\u003c=\u003e?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]", '"', true);
+                    "!\"#$%&\u0027()*+,-./0123456789:;\u003c=\u003e?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""!\""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("^_`abcdefghijklmnopqrstuvwxyz{|}~", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("^_`abcdefghijklmnopqrstuvwxyz{|}~", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""^_`abcdefghijklmnopqrstuvwxyz{|}~""", result);
 
             string data =
@@ -499,22 +499,22 @@ namespace Newtonsoft.Json.Tests
             string expected =
                 @"""\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~""";
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString(data, '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString(data, '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(expected, result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("Fred's cat.", '\'', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("Fred's cat.", '\'', true, StringEscapeHandling.Default);
             Assert.AreEqual(result, @"'Fred\'s cat.'");
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString(@"""How are you gentlemen?"" said Cats.", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString(@"""How are you gentlemen?"" said Cats.", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(result, @"""\""How are you gentlemen?\"" said Cats.""");
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString(@"""How are' you gentlemen?"" said Cats.", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString(@"""How are' you gentlemen?"" said Cats.", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(result, @"""\""How are' you gentlemen?\"" said Cats.""");
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString(@"Fred's ""cat"".", '\'', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString(@"Fred's ""cat"".", '\'', true, StringEscapeHandling.Default);
             Assert.AreEqual(result, @"'Fred\'s ""cat"".'");
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("\u001farray\u003caddress", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("\u001farray\u003caddress", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(result, @"""\u001farray<address""");
         }
 
@@ -523,13 +523,13 @@ namespace Newtonsoft.Json.Tests
         {
             string result;
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u0085' + "after", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u0085' + "after", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""before\u0085after""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u2028' + "after", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u2028' + "after", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""before\u2028after""", result);
 
-            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u2029' + "after", '"', true);
+            result = JavaScriptUtils.ToEscapedJavaScriptString("before" + '\u2029' + "after", '"', true, StringEscapeHandling.Default);
             Assert.AreEqual(@"""before\u2029after""", result);
         }
 
@@ -609,7 +609,7 @@ namespace Newtonsoft.Json.Tests
             value = null;
             Assert.AreEqual("null", JsonConvert.ToString(value));
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(PORTABLE || DNXCORE50 || PORTABLE40)
             value = DBNull.Value;
             Assert.AreEqual("null", JsonConvert.ToString(value));
 #endif
@@ -887,9 +887,11 @@ namespace Newtonsoft.Json.Tests
         {
             Console.WriteLine(name);
 
-            DateTimeResult result = new DateTimeResult();
+            DateTimeResult result = new DateTimeResult()
+            {
+                IsoDateRoundtrip = TestDateTimeFormat(value, DateFormatHandling.IsoDateFormat, DateTimeZoneHandling.RoundtripKind)
+            };
 
-            result.IsoDateRoundtrip = TestDateTimeFormat(value, DateFormatHandling.IsoDateFormat, DateTimeZoneHandling.RoundtripKind);
             if (value is DateTime)
             {
                 result.IsoDateLocal = TestDateTimeFormat(value, DateFormatHandling.IsoDateFormat, DateTimeZoneHandling.Local);
@@ -906,8 +908,7 @@ namespace Newtonsoft.Json.Tests
             }
 
             TestDateTimeFormat(value, new IsoDateTimeConverter());
-
-#if !NETFX_CORE
+            
             if (value is DateTime)
             {
                 Console.WriteLine(XmlConvert.ToString((DateTime)(object)value, XmlDateTimeSerializationMode.RoundtripKind));
@@ -916,7 +917,6 @@ namespace Newtonsoft.Json.Tests
             {
                 Console.WriteLine(XmlConvert.ToString((DateTimeOffset)(object)value));
             }
-#endif
 
 #if !NET20
             MemoryStream ms = new MemoryStream();
@@ -951,11 +951,7 @@ namespace Newtonsoft.Json.Tests
             if (timeZoneHandling == DateTimeZoneHandling.RoundtripKind)
             {
                 T parsed = JsonConvert.DeserializeObject<T>(date);
-                try
-                {
-                    Assert.AreEqual(value, parsed);
-                }
-                catch (Exception)
+                if (!value.Equals(parsed))
                 {
                     long valueTicks = GetTicks(value);
                     long parsedTicks = GetTicks(parsed);
@@ -1016,95 +1012,6 @@ namespace Newtonsoft.Json.Tests
             return (T)converter.ReadJson(reader, typeof(T), null, null);
         }
 
-#if !(NET20 || NET35 || PORTABLE40)
-        [Test]
-        public void Async()
-        {
-            Task<string> task = null;
-
-#pragma warning disable 612,618
-            task = JsonConvert.SerializeObjectAsync(42);
-#pragma warning restore 612,618
-            task.Wait();
-
-            Assert.AreEqual("42", task.Result);
-
-#pragma warning disable 612,618
-            task = JsonConvert.SerializeObjectAsync(new[] { 1, 2, 3, 4, 5 }, Formatting.Indented);
-#pragma warning restore 612,618
-            task.Wait();
-
-            StringAssert.AreEqual(@"[
-  1,
-  2,
-  3,
-  4,
-  5
-]", task.Result);
-
-#pragma warning disable 612,618
-            task = JsonConvert.SerializeObjectAsync(DateTime.MaxValue, Formatting.None, new JsonSerializerSettings
-            {
-                DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
-            });
-#pragma warning restore 612,618
-            task.Wait();
-
-            Assert.AreEqual(@"""\/Date(253402300799999)\/""", task.Result);
-
-#pragma warning disable 612,618
-            var taskObject = JsonConvert.DeserializeObjectAsync("[]");
-#pragma warning restore 612,618
-            taskObject.Wait();
-
-            CollectionAssert.AreEquivalent(new JArray(), (JArray)taskObject.Result);
-
-#pragma warning disable 612,618
-            Task<object> taskVersionArray = JsonConvert.DeserializeObjectAsync("['2.0']", typeof(Version[]), new JsonSerializerSettings
-            {
-                Converters = { new VersionConverter() }
-            });
-#pragma warning restore 612,618
-            taskVersionArray.Wait();
-
-            Version[] versionArray = (Version[])taskVersionArray.Result;
-
-            Assert.AreEqual(1, versionArray.Length);
-            Assert.AreEqual(2, versionArray[0].Major);
-
-#pragma warning disable 612,618
-            Task<int> taskInt = JsonConvert.DeserializeObjectAsync<int>("5");
-#pragma warning restore 612,618
-            taskInt.Wait();
-
-            Assert.AreEqual(5, taskInt.Result);
-
-#pragma warning disable 612,618
-            var taskVersion = JsonConvert.DeserializeObjectAsync<Version>("'2.0'", new JsonSerializerSettings
-            {
-                Converters = { new VersionConverter() }
-            });
-#pragma warning restore 612,618
-            taskVersion.Wait();
-
-            Assert.AreEqual(2, taskVersion.Result.Major);
-
-            Movie p = new Movie();
-            p.Name = "Existing,";
-
-#pragma warning disable 612,618
-            Task taskVoid = JsonConvert.PopulateObjectAsync("{'Name':'Appended'}", p, new JsonSerializerSettings
-            {
-                Converters = new List<JsonConverter> { new StringAppenderConverter() }
-            });
-#pragma warning restore 612,618
-
-            taskVoid.Wait();
-
-            Assert.AreEqual("Existing,Appended", p.Name);
-        }
-#endif
-
         [Test]
         public void SerializeObjectDateTimeZoneHandling()
         {
@@ -1145,10 +1052,12 @@ namespace Newtonsoft.Json.Tests
             var now = DateTimeOffset.Now;
             var dict = new Dictionary<string, object> { { "foo", now } };
 
-            var settings = new JsonSerializerSettings();
-            settings.DateFormatHandling = DateFormatHandling.IsoDateFormat;
-            settings.DateParseHandling = DateParseHandling.DateTimeOffset;
-            settings.DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind;
+            var settings = new JsonSerializerSettings()
+            {
+                DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                DateParseHandling = DateParseHandling.DateTimeOffset,
+                DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind
+            };
             var json = JsonConvert.SerializeObject(dict, settings);
 
             var newDict = new Dictionary<string, object>();
@@ -1194,15 +1103,15 @@ namespace Newtonsoft.Json.Tests
             DateTime dt = DateTime.MaxValue;
 
             StringWriter sw = new StringWriter();
-            JsonTextWriter writer = new JsonTextWriter(sw);
-            writer.DateFormatHandling = DateFormatHandling.MicrosoftDateFormat;
-
+            JsonTextWriter writer = new JsonTextWriter(sw)
+            {
+                DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
+            };
             writer.WriteValue(dt);
             writer.Flush();
         }
 
-
-#if !(NET20 || NET35 || PORTABLE40 || PORTABLE)
+#if !(NET20 || NET35 || PORTABLE40 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0
         [Test]
         public void IntegerLengthOverflows()
         {
@@ -1228,7 +1137,12 @@ namespace Newtonsoft.Json.Tests
             Assert.AreEqual(typeof(DateTime), jsonReader.ValueType);
         }
 
-        //[Test]
+#if DNXCORE50
+        [Test(Skip = "Don't run with other unit tests")]
+#else
+        [Ignore("Don't run with other unit tests")]
+        [Test]
+#endif
         public void StackOverflowTest()
         {
             StringBuilder sb = new StringBuilder();
@@ -1292,7 +1206,7 @@ namespace Newtonsoft.Json.Tests
             }
 
             public ClobberingJsonConverter(string clobberValueString)
-            : this(clobberValueString, 1337)
+                : this(clobberValueString, 1337)
             {
             }
 
@@ -1330,6 +1244,310 @@ namespace Newtonsoft.Json.Tests
             public string One { get; set; }
         }
 
+        
+        public class OverloadsJsonConverterer : JsonConverter
+        {
+            private readonly string _type;
+            
+            // constructor with Type argument
+
+            public OverloadsJsonConverterer(Type typeParam)
+            {
+                _type = "Type";
+            }
+            
+            public OverloadsJsonConverterer(object objectParam)
+            {
+                _type = string.Format("object({0})", objectParam.GetType().FullName);
+            }
+
+            // primitive type conversions
+
+            public OverloadsJsonConverterer(byte byteParam)
+            {
+                _type = "byte";
+            }
+
+            public OverloadsJsonConverterer(short shortParam)
+            {
+                _type = "short";
+            }
+
+            public OverloadsJsonConverterer(int intParam)
+            {
+                _type = "int";
+            }
+
+            public OverloadsJsonConverterer(long longParam)
+            {
+                _type = "long";
+            }
+
+            public OverloadsJsonConverterer(double doubleParam)
+            {
+                _type = "double";
+            }
+
+            // params argument
+
+            public OverloadsJsonConverterer(params int[] intParams)
+            {
+                _type = "int[]";
+            }
+
+            public OverloadsJsonConverterer(bool[] intParams)
+            {
+                _type = "bool[]";
+            }
+
+            // closest type resolution
+
+            public OverloadsJsonConverterer(IEnumerable<string> iEnumerableParam)
+            {
+                _type = "IEnumerable<string>";
+            }
+
+            public OverloadsJsonConverterer(IList<string> iListParam)
+            {
+                _type = "IList<string>";
+            }
+
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                writer.WriteValue(_type);
+            }
+            
+            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override bool CanConvert(Type objectType)
+            {
+                return objectType == typeof(int);
+            }
+            
+        }
+
+        public class OverloadWithTypeParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), typeof(int))]
+            public int Overload { get; set; }
+        }
+
+        [Test]
+        public void JsonConverterConstructor_OverloadWithTypeParam()
+        {
+            OverloadWithTypeParameter value = new OverloadWithTypeParameter();
+            string json = JsonConvert.SerializeObject(value);
+
+            Assert.AreEqual("{\"Overload\":\"Type\"}", json);
+        }
+        
+        public class OverloadWithUnhandledParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), "str")]
+            public int Overload { get; set; }
+        }
+
+        [Test]
+        public void JsonConverterConstructor_OverloadWithUnhandledParam_FallbackToObject()
+        {
+            OverloadWithUnhandledParameter value = new OverloadWithUnhandledParameter();
+            string json = JsonConvert.SerializeObject(value);
+
+            Assert.AreEqual("{\"Overload\":\"object(System.String)\"}", json);
+        }
+
+        public class OverloadWithIntParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithUIntParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1U)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithLongParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1L)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithULongParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1UL)]
+            public int Overload { get; set; }
+        }
+        
+        public class OverloadWithShortParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), (short)1)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithUShortParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), (ushort)1)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithSByteParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), (sbyte)1)]
+            public int Overload { get; set; }
+        }
+        
+        public class OverloadWithByteParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), (byte)1)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithCharParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 'a')]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithBoolParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), true)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithFloatParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1.5f)]
+            public int Overload { get; set; }
+        }
+
+        public class OverloadWithDoubleParameter
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), 1.5)]
+            public int Overload { get; set; }
+        }
+        
+        [Test]
+        public void JsonConverterConstructor_OverloadsWithPrimitiveParams()
+        {
+            {
+                OverloadWithIntParameter value = new OverloadWithIntParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"int\"}", json);
+            }
+
+            {
+                // uint -> long
+                OverloadWithUIntParameter value = new OverloadWithUIntParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"long\"}", json);
+            }
+
+            {
+                OverloadWithLongParameter value = new OverloadWithLongParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"long\"}", json);
+            }
+
+            {
+                // ulong -> double
+                OverloadWithULongParameter value = new OverloadWithULongParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"double\"}", json);
+            }
+
+            {
+                OverloadWithShortParameter value = new OverloadWithShortParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"short\"}", json);
+            }
+
+            {
+                // ushort -> int
+                OverloadWithUShortParameter value = new OverloadWithUShortParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"int\"}", json);
+            }
+
+            {
+                // sbyte -> short
+                OverloadWithSByteParameter value = new OverloadWithSByteParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"short\"}", json);
+            }
+
+            {
+                OverloadWithByteParameter value = new OverloadWithByteParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"byte\"}", json);
+            }
+
+            {
+                // char -> int
+                OverloadWithCharParameter value = new OverloadWithCharParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"int\"}", json);
+            }
+
+            {
+                // bool -> (object)bool
+                OverloadWithBoolParameter value = new OverloadWithBoolParameter();
+                var json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"object(System.Boolean)\"}", json);
+            }
+
+            {
+                // float -> double
+                OverloadWithFloatParameter value = new OverloadWithFloatParameter();
+                string json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"double\"}", json);
+            }
+
+            {
+                OverloadWithDoubleParameter value = new OverloadWithDoubleParameter();
+                var json = JsonConvert.SerializeObject(value);
+                Assert.AreEqual("{\"Overload\":\"double\"}", json);
+            }
+        }
+
+        public class OverloadWithArrayParameters
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), new int[] { 1, 2, 3 })]
+            public int WithParams { get; set; }
+
+            [JsonConverter(typeof(OverloadsJsonConverterer), new bool[] { true, false })]
+            public int WithoutParams { get; set; }
+        }
+
+        [Test]
+        public void JsonConverterConstructor_OverloadsWithArrayParams()
+        {
+            OverloadWithArrayParameters value = new OverloadWithArrayParameters();
+            string json = JsonConvert.SerializeObject(value);
+
+            Assert.AreEqual("{\"WithParams\":\"int[]\",\"WithoutParams\":\"bool[]\"}", json);
+        }
+
+        public class OverloadWithBaseType
+        {
+            [JsonConverter(typeof(OverloadsJsonConverterer), new object[] { new string[] { "a", "b", "c" } })]
+            public int Overload { get; set; }
+        }
+
+        [Test]
+        public void JsonConverterConstructor_OverloadsWithBaseTypes()
+        {
+            OverloadWithBaseType value = new OverloadWithBaseType();
+            string json = JsonConvert.SerializeObject(value);
+
+            Assert.AreEqual("{\"Overload\":\"IList<string>\"}", json);
+        }
+
+
         [Test]
         public void CustomDoubleRounding()
         {
@@ -1341,7 +1559,6 @@ namespace Newtonsoft.Json.Tests
             };
 
             string json = JsonConvert.SerializeObject(measurements);
-
 
             Assert.AreEqual("{\"Positions\":[57.72,60.44,63.44,66.81,70.45],\"Loads\":[23284.0,23225.0,23062.0,22846.0,22594.0],\"Gain\":12345.679}", json);
         }
@@ -1393,7 +1610,7 @@ namespace Newtonsoft.Json.Tests
             {
                 throw new NotImplementedException();
             }
-            
+
             public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
             {
                 writer.WriteValue(Math.Round((double)value, _precision, _rounding));
@@ -1403,12 +1620,188 @@ namespace Newtonsoft.Json.Tests
         [Test]
         public void GenericBaseClassSerialization()
         {
-            string json = JsonConvert.SerializeObject (new NonGenericChildClass ());
-            Assert.AreEqual ("{\"Data\":null}", json);
+            string json = JsonConvert.SerializeObject(new NonGenericChildClass());
+            Assert.AreEqual("{\"Data\":null}", json);
         }
 
-        public class GenericBaseClass<O, T> { public virtual T Data { get; set; } }
-        public class GenericIntermediateClass<O> : GenericBaseClass<O, string> { public override string Data { get; set; } }
-        public class NonGenericChildClass : GenericIntermediateClass<int> { }
+        public class GenericBaseClass<O, T>
+        {
+            public virtual T Data { get; set; }
+        }
+
+        public class GenericIntermediateClass<O> : GenericBaseClass<O, string>
+        {
+            public override string Data { get; set; }
+        }
+
+        public class NonGenericChildClass : GenericIntermediateClass<int>
+        {
+        }
+
+        [Test]
+        public void ShouldNotPopulateReadOnlyEnumerableObjectWithNonDefaultConstructor()
+        {
+            object actual = JsonConvert.DeserializeObject<HasReadOnlyEnumerableObject>("{\"foo\":{}}");
+            Assert.IsNotNull(actual);
+        }
+
+        [Test]
+        public void ShouldNotPopulateReadOnlyEnumerableObjectWithDefaultConstructor()
+        {
+            object actual = JsonConvert.DeserializeObject<HasReadOnlyEnumerableObjectAndDefaultConstructor>("{\"foo\":{}}");
+            Assert.IsNotNull(actual);
+        }
+
+        [Test]
+        public void ShouldNotPopulateContructorArgumentEnumerableObject()
+        {
+            object actual = JsonConvert.DeserializeObject<AcceptsEnumerableObjectToConstructor>("{\"foo\":{}}");
+            Assert.IsNotNull(actual);
+        }
+
+        [Test]
+        public void ShouldNotPopulateEnumerableObjectProperty()
+        {
+            object actual = JsonConvert.DeserializeObject<HasEnumerableObject>("{\"foo\":{}}");
+            Assert.IsNotNull(actual);
+        }
+
+#if !(NET40 || NET35 || NET20 || PORTABLE40)
+        [Test]
+        public void ShouldNotPopulateReadOnlyDictionaryObjectWithNonDefaultConstructor()
+        {
+            object actual = JsonConvert.DeserializeObject<HasReadOnlyDictionary>("{\"foo\":{'key':'value'}}");
+            Assert.IsNotNull(actual);
+        }
+
+        public sealed class HasReadOnlyDictionary
+        {
+            [JsonProperty("foo")]
+            public IReadOnlyDictionary<string, string> Foo { get; } = new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+
+            [JsonConstructor]
+            public HasReadOnlyDictionary([JsonProperty("bar")] int bar)
+            {
+
+            }
+        }
+#endif
+
+        public sealed class HasReadOnlyEnumerableObject
+        {
+            [JsonProperty("foo")]
+            public EnumerableWithConverter Foo { get; } = new EnumerableWithConverter();
+
+            [JsonConstructor]
+            public HasReadOnlyEnumerableObject([JsonProperty("bar")] int bar)
+            {
+
+            }
+        }
+
+        public sealed class HasReadOnlyEnumerableObjectAndDefaultConstructor
+        {
+            [JsonProperty("foo")]
+            public EnumerableWithConverter Foo { get; } = new EnumerableWithConverter();
+
+            [JsonConstructor]
+            public HasReadOnlyEnumerableObjectAndDefaultConstructor()
+            {
+
+            }
+        }
+
+        public sealed class AcceptsEnumerableObjectToConstructor
+        {
+            [JsonConstructor]
+            public AcceptsEnumerableObjectToConstructor
+            (
+                [JsonProperty("foo")] EnumerableWithConverter foo,
+                [JsonProperty("bar")] int bar
+            )
+            {
+
+            }
+        }
+
+        public sealed class HasEnumerableObject
+        {
+            [JsonProperty("foo")]
+            public EnumerableWithConverter Foo { get; set; } = new EnumerableWithConverter();
+
+            [JsonConstructor]
+            public HasEnumerableObject([JsonProperty("bar")] int bar)
+            {
+
+            }
+        }
+
+        [JsonConverter(typeof(Converter))]
+        public sealed class EnumerableWithConverter : IEnumerable<int>
+        {
+            public sealed class Converter : JsonConverter
+            {
+                public override bool CanConvert(Type objectType)
+                    => objectType == typeof(Foo);
+
+                public override object ReadJson
+                    (JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+                {
+                    reader.Skip();
+                    return new EnumerableWithConverter();
+                }
+
+                public override void WriteJson
+                    (JsonWriter writer, object value, JsonSerializer serializer)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteEndObject();
+                }
+            }
+
+            public IEnumerator<int> GetEnumerator()
+            {
+                yield break;
+            }
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        }
+
+        [Test]
+        public void ShouldNotRequireIgnoredPropertiesWithItemsRequired()
+        {
+            string json = @"{
+  ""exp"": 1483228800,
+  ""active"": true
+}";
+            ItemsRequiredObjectWithIgnoredProperty value = JsonConvert.DeserializeObject<ItemsRequiredObjectWithIgnoredProperty>(json);
+            Assert.IsNotNull(value);
+            Assert.AreEqual(value.Expiration, new DateTime(2017, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            Assert.AreEqual(value.Active, true);
+        }
+
+        [JsonObject(ItemRequired = Required.Always)]
+        public sealed class ItemsRequiredObjectWithIgnoredProperty
+        {
+            private static readonly DateTime s_unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            [JsonProperty("exp")]
+            private int _expiration
+            {
+                get
+                {
+                    return (int)((Expiration - s_unixEpoch).TotalSeconds);
+                }
+                set
+                {
+                    Expiration = s_unixEpoch.AddSeconds(value);
+                }
+            }
+
+            public bool Active { get; set; }
+
+            [JsonIgnore]
+            public DateTime Expiration { get; set; }
+        }
     }
 }

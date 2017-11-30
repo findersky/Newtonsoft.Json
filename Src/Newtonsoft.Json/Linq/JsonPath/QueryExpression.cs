@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+#if !HAVE_LINQ
+using Newtonsoft.Json.Utilities.LinqBridge;
+#else
+using System.Linq;
+#endif
 using Newtonsoft.Json.Utilities;
 
 namespace Newtonsoft.Json.Linq.JsonPath
@@ -24,7 +29,7 @@ namespace Newtonsoft.Json.Linq.JsonPath
     {
         public QueryOperator Operator { get; set; }
 
-        public abstract bool IsMatch(JToken t);
+        public abstract bool IsMatch(JToken root, JToken t);
     }
 
     internal class CompositeExpression : QueryExpression
@@ -36,22 +41,26 @@ namespace Newtonsoft.Json.Linq.JsonPath
             Expressions = new List<QueryExpression>();
         }
 
-        public override bool IsMatch(JToken t)
+        public override bool IsMatch(JToken root, JToken t)
         {
             switch (Operator)
             {
                 case QueryOperator.And:
                     foreach (QueryExpression e in Expressions)
                     {
-                        if (!e.IsMatch(t))
+                        if (!e.IsMatch(root, t))
+                        {
                             return false;
+                        }
                     }
                     return true;
                 case QueryOperator.Or:
                     foreach (QueryExpression e in Expressions)
                     {
-                        if (e.IsMatch(t))
+                        if (e.IsMatch(root, t))
+                        {
                             return true;
+                        }
                     }
                     return false;
                 default:
@@ -62,46 +71,110 @@ namespace Newtonsoft.Json.Linq.JsonPath
 
     internal class BooleanQueryExpression : QueryExpression
     {
-        public List<PathFilter> Path { get; set; }
-        public JValue Value { get; set; }
+        public object Left { get; set; }
+        public object Right { get; set; }
 
-        public override bool IsMatch(JToken t)
+        private IEnumerable<JToken> GetResult(JToken root, JToken t, object o)
         {
-            IEnumerable<JToken> pathResult = JPath.Evaluate(Path, t, false);
-
-            foreach (JToken r in pathResult)
+            if (o is JToken resultToken)
             {
-                JValue v = r as JValue;
+                return new[] { resultToken };
+            }
+
+            if (o is List<PathFilter> pathFilters)
+            {
+                return JPath.Evaluate(pathFilters, root, t, false);
+            }
+
+            return CollectionUtils.ArrayEmpty<JToken>();
+        }
+
+        public override bool IsMatch(JToken root, JToken t)
+        {
+            if (Operator == QueryOperator.Exists)
+            {
+                return GetResult(root, t, Left).Any();
+            }
+
+            using (IEnumerator<JToken> leftResults = GetResult(root, t, Left).GetEnumerator())
+            {
+                if (leftResults.MoveNext())
+                {
+                    IEnumerable<JToken> rightResultsEn = GetResult(root, t, Right);
+                    ICollection<JToken> rightResults = rightResultsEn as ICollection<JToken> ?? rightResultsEn.ToList();
+
+                    do
+                    {
+                        JToken leftResult = leftResults.Current;
+                        foreach (JToken rightResult in rightResults)
+                        {
+                            if (MatchTokens(leftResult, rightResult))
+                            {
+                                return true;
+                            }
+                        }
+                    } while (leftResults.MoveNext());
+                }
+            }
+
+            return false;
+        }
+
+        private bool MatchTokens(JToken leftResult, JToken rightResult)
+        {
+            if (leftResult is JValue leftValue && rightResult is JValue rightValue)
+            {
                 switch (Operator)
                 {
                     case QueryOperator.Equals:
-                        if (v != null && EqualsWithStringCoercion(v, Value))
+                        if (EqualsWithStringCoercion(leftValue, rightValue))
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.NotEquals:
-                        if (v != null && !EqualsWithStringCoercion(v, Value))
+                        if (!EqualsWithStringCoercion(leftValue, rightValue))
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.GreaterThan:
-                        if (v != null && v.CompareTo(Value) > 0)
+                        if (leftValue.CompareTo(rightValue) > 0)
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.GreaterThanOrEquals:
-                        if (v != null && v.CompareTo(Value) >= 0)
+                        if (leftValue.CompareTo(rightValue) >= 0)
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.LessThan:
-                        if (v != null && v.CompareTo(Value) < 0)
+                        if (leftValue.CompareTo(rightValue) < 0)
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.LessThanOrEquals:
-                        if (v != null && v.CompareTo(Value) <= 0)
+                        if (leftValue.CompareTo(rightValue) <= 0)
+                        {
                             return true;
+                        }
                         break;
                     case QueryOperator.Exists:
                         return true;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            else
+            {
+                switch (Operator)
+                {
+                    case QueryOperator.Exists:
+                    // you can only specify primitive types in a comparison
+                    // notequals will always be true
+                    case QueryOperator.NotEquals:
+                        return true;
                 }
             }
 
@@ -130,10 +203,10 @@ namespace Newtonsoft.Json.Linq.JsonPath
                 case JTokenType.Date:
                     using (StringWriter writer = StringUtils.CreateStringWriter(64))
                     {
-#if !NET20
-                        if (value.Value is DateTimeOffset)
+#if HAVE_DATE_TIME_OFFSET
+                        if (value.Value is DateTimeOffset offset)
                         {
-                            DateTimeUtils.WriteDateTimeOffsetString(writer, (DateTimeOffset)value.Value, DateFormatHandling.IsoDateFormat, null, CultureInfo.InvariantCulture);
+                            DateTimeUtils.WriteDateTimeOffsetString(writer, offset, DateFormatHandling.IsoDateFormat, null, CultureInfo.InvariantCulture);
                         }
                         else
 #endif

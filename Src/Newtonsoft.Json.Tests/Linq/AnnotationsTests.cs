@@ -7,16 +7,13 @@ using System.Linq;
 #endif
 using System.Text;
 using Newtonsoft.Json.Linq;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using TestAttribute = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Linq
@@ -173,7 +170,7 @@ namespace Newtonsoft.Json.Tests.Linq
             Assert.AreEqual(null, s);
 
             o.AddAnnotation("A string 4!");
-            
+
             s = o.Annotation<string>();
             Assert.AreEqual("A string 4!", s);
 
@@ -276,7 +273,6 @@ namespace Newtonsoft.Json.Tests.Linq
 
             o["age"] = 59;
             o["employer"] = "Bill & Melinda Gates Foundation";
-
 
             HashSet<string> changedProperties = o.Annotation<HashSet<string>>();
             // age

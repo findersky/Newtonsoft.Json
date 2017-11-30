@@ -32,11 +32,8 @@ using System.Numerics;
 #endif
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+using Newtonsoft.Json.Tests.TestObjects.Organization;
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -46,7 +43,7 @@ using NUnit.Framework;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Collections;
-#if !(NETFX_CORE || DNXCORE50)
+#if !(DNXCORE50)
 using System.Web.UI;
 #endif
 #if NET20
@@ -61,7 +58,7 @@ namespace Newtonsoft.Json.Tests.Linq
     [TestFixture]
     public class JObjectTests : TestFixtureBase
     {
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void EmbedJValueStringInNewJObject()
         {
@@ -97,7 +94,9 @@ namespace Newtonsoft.Json.Tests.Linq
                 roles.Add(role);
 
                 if (!reader.Read())
+                {
                     break;
+                }
             }
 
             Assert.AreEqual(2, roles.Count);
@@ -121,7 +120,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JToken o = JToken.Parse(json);
 
-            Assert.AreEqual("Apple", (string) o["Name"]);
+            Assert.AreEqual("Apple", (string)o["Name"]);
         }
 
         [Test]
@@ -292,6 +291,27 @@ namespace Newtonsoft.Json.Tests.Linq
 
             contains = ((ICollection<KeyValuePair<string, JToken>>)o).Contains(default(KeyValuePair<string, JToken>));
             Assert.AreEqual(false, contains);
+        }
+
+        [Test]
+        public void Contains()
+        {
+            JObject o = new JObject();
+            o.Add("PropertyNameValue", new JValue(1));
+            Assert.AreEqual(1, o.Children().Count());
+
+            bool contains = o.ContainsKey("PropertyNameValue");
+            Assert.AreEqual(true, contains);
+
+            contains = o.ContainsKey("does not exist");
+            Assert.AreEqual(false, contains);
+
+            ExceptionAssert.Throws<ArgumentNullException>(() =>
+            {
+                contains = o.ContainsKey(null);
+                Assert.AreEqual(false, contains);
+            }, @"Value cannot be null.
+Parameter name: propertyName");
         }
 
         [Test]
@@ -717,7 +737,7 @@ Parameter name: arrayIndex");
             Assert.AreEqual(p4, l[1]);
         }
 
-#if !(NET20 || PORTABLE || PORTABLE40)
+#if !(NET20 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
         [Test]
         public void PropertyChanging()
         {
@@ -1260,7 +1280,7 @@ Parameter name: arrayIndex");
             }, "Can not add property Test3 to Newtonsoft.Json.Linq.JObject. Property with the same name already exists on object.");
         }
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(PORTABLE || DNXCORE50 || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void IBindingListSortDirection()
         {
@@ -1455,7 +1475,7 @@ Parameter name: arrayIndex");
         }
 #endif
 
-#if !(NET20 || NET35 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void CollectionChanged()
         {
@@ -1584,7 +1604,7 @@ Parameter name: arrayIndex");
             Assert.AreEqual("Name2", value);
         }
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(PORTABLE || DNXCORE50 || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void WriteObjectNullDBNullValue()
         {
@@ -1696,7 +1716,7 @@ Parameter name: arrayIndex");
             }, "Unexpected end of content while loading JObject. Path 'short.error.code', line 6, position 14.");
         }
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(PORTABLE || DNXCORE50 || PORTABLE40) || NETSTANDARD2_0
         [Test]
         public void GetProperties()
         {
@@ -1940,7 +1960,9 @@ Parameter name: arrayIndex");
                     o.WriteTo(writer);
                 }
                 else
+                {
                     token.WriteTo(writer);
+                }
             }
 
             public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -1992,6 +2014,31 @@ Parameter name: arrayIndex");
             Assert.AreEqual(1, (int)o["prop"][0]);
             Assert.AreEqual(2, (int)o["prop"][1]);
             Assert.AreEqual(3, (int)o["prop"][2]);
+        }
+
+        [Test]
+        public void Parse_ExcessiveContentJustComments()
+        {
+            string json = @"{'prop':[1,2,3]}/*comment*/
+//Another comment.";
+
+            JObject o = JObject.Parse(json);
+
+            Assert.AreEqual(3, o["prop"].Count());
+            Assert.AreEqual(1, (int)o["prop"][0]);
+            Assert.AreEqual(2, (int)o["prop"][1]);
+            Assert.AreEqual(3, (int)o["prop"][2]);
+        }
+
+        [Test]
+        public void Parse_ExcessiveContent()
+        {
+            string json = @"{'prop':[1,2,3]}/*comment*/
+//Another comment.
+[]";
+
+            ExceptionAssert.Throws<JsonReaderException>(() => JObject.Parse(json),
+                "Additional text encountered after finished reading JSON content: [. Path '', line 3, position 0.");
         }
     }
 }

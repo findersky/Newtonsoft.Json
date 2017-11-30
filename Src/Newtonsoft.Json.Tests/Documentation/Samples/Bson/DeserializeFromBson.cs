@@ -34,6 +34,7 @@ using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Bson
@@ -49,6 +50,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Bson
         }
         #endregion
 
+#pragma warning disable 618
         [Test]
         public void Example()
         {
@@ -66,6 +68,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Bson
                 // Movie Premiere
             }
             #endregion
+#pragma warning restore 618
         }
     }
 }

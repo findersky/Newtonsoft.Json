@@ -26,16 +26,15 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Converters;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+using Newtonsoft.Json.Tests.TestObjects;
+using Newtonsoft.Json.Tests.TestObjects.Organization;
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Converters
@@ -43,31 +42,7 @@ namespace Newtonsoft.Json.Tests.Converters
     [TestFixture]
     public class CustomCreationConverterTests : TestFixtureBase
     {
-        public interface IPerson
-        {
-            string FirstName { get; set; }
-            string LastName { get; set; }
-            DateTime BirthDate { get; set; }
-        }
-
-        public class Employee : IPerson
-        {
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            public DateTime BirthDate { get; set; }
-
-            public string Department { get; set; }
-            public string JobTitle { get; set; }
-        }
-
-        public class PersonConverter : CustomCreationConverter<IPerson>
-        {
-            public override IPerson Create(Type objectType)
-            {
-                return new Employee();
-            }
-        }
-
+        [Test]
         public void DeserializeObject()
         {
             string json = JsonConvert.SerializeObject(new List<Employee>
@@ -111,7 +86,7 @@ namespace Newtonsoft.Json.Tests.Converters
 
             IPerson person = people[0];
 
-            Assert.AreEqual("Newtonsoft.Json.Tests.Employee", person.GetType().Name);
+            Assert.AreEqual("Employee", person.GetType().Name);
 
             Assert.AreEqual("Maurice", person.FirstName);
 

@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(DOTNET || PORTABLE40 || PORTABLE)
+#if HAVE_ADO_NET
 using System;
 using System.Data;
 using Newtonsoft.Json.Serialization;
@@ -43,6 +43,12 @@ namespace Newtonsoft.Json.Converters
         /// <param name="serializer">The calling serializer.</param>
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
+            if (value == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+
             DataSet dataSet = (DataSet)value;
             DefaultContractResolver resolver = serializer.ContractResolver as DefaultContractResolver;
 
@@ -82,7 +88,7 @@ namespace Newtonsoft.Json.Converters
 
             DataTableConverter converter = new DataTableConverter();
 
-            CheckedRead(reader);
+            reader.ReadAndAssert();
 
             while (reader.TokenType == JsonToken.PropertyName)
             {
@@ -96,7 +102,7 @@ namespace Newtonsoft.Json.Converters
                     ds.Tables.Add(dt);
                 }
 
-                CheckedRead(reader);
+                reader.ReadAndAssert();
             }
 
             return ds;
@@ -113,14 +119,7 @@ namespace Newtonsoft.Json.Converters
         {
             return typeof(DataSet).IsAssignableFrom(valueType);
         }
-
-        private void CheckedRead(JsonReader reader)
-        {
-            if (!reader.Read())
-            {
-                throw JsonSerializationException.Create(reader, "Unexpected end when reading DataSet.");
-            }
-        }
     }
 }
+
 #endif

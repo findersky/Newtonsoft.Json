@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET35 || NET20 || DNXCORE50)
+#if !(NET40 || NET35 || NET20 || DNXCORE50) || NETSTANDARD2_0
 using System.Diagnostics;
 using System.Reflection;
 using Microsoft.FSharp.Core;
@@ -34,7 +34,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Tests.TestObjects;
+using Newtonsoft.Json.Tests.TestObjects.GeometricForms;
+using Newtonsoft.Json.Tests.TestObjects.Money;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+#endif
 
 namespace Newtonsoft.Json.Tests.Converters
 {
@@ -189,7 +197,7 @@ namespace Newtonsoft.Json.Tests.Converters
         {
             Union u = new Union();
 
-            u.TagReader = FSharpFunc<object, int>.ToConverter(FSharpValue.PreComputeUnionTagReader(t, null));
+            u.TagReader = (s) => FSharpValue.PreComputeUnionTagReader(t, null).Invoke(s);
             u.Cases = new List<UnionCase>();
 
             UnionCaseInfo[] cases = FSharpType.GetUnionCases(t, null);
@@ -200,8 +208,8 @@ namespace Newtonsoft.Json.Tests.Converters
                 unionCase.Tag = unionCaseInfo.Tag;
                 unionCase.Name = unionCaseInfo.Name;
                 unionCase.Fields = unionCaseInfo.GetFields();
-                unionCase.FieldReader = FSharpFunc<object, object[]>.ToConverter(FSharpValue.PreComputeUnionReader(unionCaseInfo, null));
-                unionCase.Constructor = FSharpFunc<object[], object>.ToConverter(FSharpValue.PreComputeUnionConstructor(unionCaseInfo, null));
+                unionCase.FieldReader = (s) => FSharpValue.PreComputeUnionReader(unionCaseInfo, null).Invoke(s);
+                unionCase.Constructor = (s) => FSharpValue.PreComputeUnionConstructor(unionCaseInfo, null).Invoke(s);
 
                 u.Cases.Add(unionCase);
             }
@@ -222,8 +230,8 @@ namespace Newtonsoft.Json.Tests.Converters
 
             object[] fields = caseInfo.FieldReader.Invoke(value);
 
-            Assert.AreEqual(10, fields[0]);
-            Assert.AreEqual(5, fields[1]);
+            Assert.AreEqual(10d, fields[0]);
+            Assert.AreEqual(5d, fields[1]);
         }
 
         [Test]
@@ -238,7 +246,7 @@ namespace Newtonsoft.Json.Tests.Converters
                 10.0, 5.0
             });
 
-            Assert.AreEqual("Newtonsoft.Json.Tests.TestObjects.Shape+Rectangle", value.ToString());
+            Assert.AreEqual("Newtonsoft.Json.Tests.TestObjects.GeometricForms.Shape+Rectangle", value.ToString());
             Assert.AreEqual(10, value.width);
             Assert.AreEqual(5, value.length);
         }
@@ -252,7 +260,7 @@ namespace Newtonsoft.Json.Tests.Converters
         [Test]
         public void DeserializeBasicUnion_MismatchedFieldCount()
         {
-            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<Currency>(@"{""Case"":""AUD"",""Fields"":[1]}"), "The number of field values does not match the number of properties definied by union 'AUD'. Path '', line 1, position 27.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<Currency>(@"{""Case"":""AUD"",""Fields"":[1]}"), "The number of field values does not match the number of properties defined by union 'AUD'. Path '', line 1, position 27.");
         }
 
         [Test]
@@ -264,7 +272,7 @@ namespace Newtonsoft.Json.Tests.Converters
         [Test]
         public void DeserializeBasicUnion_UnexpectedEnd()
         {
-            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<Currency>(@"{""Case"":"), "Unexpected end when reading union. Path 'Case', line 1, position 8.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<Currency>(@"{""Case"":"), "Unexpected end when reading JSON. Path 'Case', line 1, position 8.");
         }
 
         [Test]
@@ -300,4 +308,5 @@ namespace Newtonsoft.Json.Tests.Converters
         }
     }
 }
+
 #endif

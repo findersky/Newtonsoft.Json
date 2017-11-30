@@ -1,4 +1,5 @@
 ﻿#region License
+
 // Copyright (c) 2007 James Newton-King
 //
 // Permission is hereby granted, free of charge, to any person
@@ -21,6 +22,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
+
 #endregion
 
 using System;
@@ -29,10 +31,11 @@ using System.Globalization;
 using System.Reflection;
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Utilities;
-#if NET20
+#if !HAVE_LINQ
 using Newtonsoft.Json.Utilities.LinqBridge;
 #else
 using System.Linq;
+
 #endif
 
 namespace Newtonsoft.Json.Converters
@@ -44,14 +47,16 @@ namespace Newtonsoft.Json.Converters
     {
         /// <summary>
         /// Gets or sets a value indicating whether the written enum text should be camel case.
+        /// The default value is <c>false</c>.
         /// </summary>
         /// <value><c>true</c> if the written enum text will be camel case; otherwise, <c>false</c>.</value>
         public bool CamelCaseText { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether integer values are allowed.
+        /// Gets or sets a value indicating whether integer values are allowed when deserializing.
+        /// The default value is <c>true</c>.
         /// </summary>
-        /// <value><c>true</c> if integers are allowed; otherwise, <c>false</c>.</value>
+        /// <value><c>true</c> if integers are allowed when deserializing; otherwise, <c>false</c>.</value>
         public bool AllowIntegerValues { get; set; }
 
         /// <summary>
@@ -60,6 +65,16 @@ namespace Newtonsoft.Json.Converters
         public StringEnumConverter()
         {
             AllowIntegerValues = true;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StringEnumConverter"/> class.
+        /// </summary>
+        /// <param name="camelCaseText"><c>true</c> if the written enum text will be camel case; otherwise, <c>false</c>.</param>
+        public StringEnumConverter(bool camelCaseText)
+            : this()
+        {
+            CamelCaseText = camelCaseText;
         }
 
         /// <summary>
@@ -82,6 +97,11 @@ namespace Newtonsoft.Json.Converters
 
             if (char.IsNumber(enumName[0]) || enumName[0] == '-')
             {
+                if (!AllowIntegerValues)
+                {
+                    throw JsonSerializationException.Create(null, writer.ContainerPath, "Integer value {0} is not allowed.".FormatWith(CultureInfo.InvariantCulture, enumName), null);
+                }
+
                 // enum value has no name so write number
                 writer.WriteValue(value);
             }
@@ -105,29 +125,34 @@ namespace Newtonsoft.Json.Converters
         /// <returns>The object value.</returns>
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            bool isNullable = ReflectionUtils.IsNullableType(objectType);
-            Type t = isNullable ? Nullable.GetUnderlyingType(objectType) : objectType;
-
             if (reader.TokenType == JsonToken.Null)
             {
                 if (!ReflectionUtils.IsNullableType(objectType))
+                {
                     throw JsonSerializationException.Create(reader, "Cannot convert null value to {0}.".FormatWith(CultureInfo.InvariantCulture, objectType));
+                }
 
                 return null;
             }
+
+            bool isNullable = ReflectionUtils.IsNullableType(objectType);
+            Type t = isNullable ? Nullable.GetUnderlyingType(objectType) : objectType;
 
             try
             {
                 if (reader.TokenType == JsonToken.String)
                 {
                     string enumText = reader.Value.ToString();
-                    return EnumUtils.ParseEnumName(enumText, isNullable, t);
+
+                    return EnumUtils.ParseEnumName(enumText, isNullable, !AllowIntegerValues, t);
                 }
 
                 if (reader.TokenType == JsonToken.Integer)
                 {
                     if (!AllowIntegerValues)
+                    {
                         throw JsonSerializationException.Create(reader, "Integer value {0} is not allowed.".FormatWith(CultureInfo.InvariantCulture, reader.Value));
+                    }
 
                     return ConvertUtils.ConvertOrCast(reader.Value, CultureInfo.InvariantCulture, t);
                 }

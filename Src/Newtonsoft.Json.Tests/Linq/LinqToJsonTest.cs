@@ -27,11 +27,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -42,18 +38,100 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Tests.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
+using Newtonsoft.Json.Tests.TestObjects.Organization;
 #if NET20
 using Newtonsoft.Json.Utilities.LinqBridge;
 #else
 using System.Linq;
 #endif
 using System.IO;
+using System.Runtime.Serialization;
 
 namespace Newtonsoft.Json.Tests.Linq
 {
     [TestFixture]
     public class LinqToJsonTest : TestFixtureBase
     {
+#if !(NET20 || NET35 || PORTABLE40 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0
+        public class DemoClass
+        {
+            public decimal maxValue;
+        }
+
+        [Test]
+        public void ToObjectDecimal()
+        {
+            var jArray = JArray.Parse("[{ maxValue:10000000000000000000 }]");
+            var list = jArray.ToObject<List<DemoClass>>();
+
+            Assert.AreEqual(10000000000000000000m, list[0].maxValue);
+        }
+#endif
+
+        [Test]
+        public void ToObjectFromGuidToString()
+        {
+            JValue token = new JValue(new Guid("91274484-3b20-48b4-9d18-7d936b2cb88f"));
+            string value = token.ToObject<string>();
+            Assert.AreEqual("91274484-3b20-48b4-9d18-7d936b2cb88f", value);
+        }
+
+        [Test]
+        public void ToObjectFromIntegerToString()
+        {
+            JValue token = new JValue(1234);
+            string value = token.ToObject<string>();
+            Assert.AreEqual("1234", value);
+        }
+
+        [Test]
+        public void ToObjectFromStringToInteger()
+        {
+            JValue token = new JValue("1234");
+            int value = token.ToObject<int>();
+            Assert.AreEqual(1234, value);
+        }
+
+        [Test]
+        public void FromObjectGuid()
+        {
+            var token1 = new JValue(Guid.NewGuid());
+            var token2 = JToken.FromObject(token1);
+            Assert.IsTrue(JToken.DeepEquals(token1, token2));
+            Assert.AreEqual(token1.Type, token2.Type);
+        }
+
+        [Test]
+        public void FromObjectTimeSpan()
+        {
+            var token1 = new JValue(TimeSpan.FromDays(1));
+            var token2 = JToken.FromObject(token1);
+            Assert.IsTrue(JToken.DeepEquals(token1, token2));
+            Assert.AreEqual(token1.Type, token2.Type);
+        }
+
+        [Test]
+        public void FromObjectUri()
+        {
+            var token1 = new JValue(new Uri("http://www.newtonsoft.com"));
+            var token2 = JToken.FromObject(token1);
+            Assert.IsTrue(JToken.DeepEquals(token1, token2));
+            Assert.AreEqual(token1.Type, token2.Type);
+        }
+
+        [Test]
+        public void ToObject_Guid()
+        {
+            JObject anon = new JObject
+            {
+                ["id"] = Guid.NewGuid()
+            };
+            Assert.AreEqual(JTokenType.Guid, anon["id"].Type);
+
+            Dictionary<string, JToken> dict = anon.ToObject<Dictionary<string, JToken>>();
+            Assert.AreEqual(JTokenType.Guid, dict["id"].Type);
+        }
+
         public class TestClass_ULong
         {
             public ulong Value { get; set; }
@@ -220,8 +298,8 @@ namespace Newtonsoft.Json.Tests.Linq
 
             IJsonLineInfo lineInfo = v;
             Assert.AreEqual(true, lineInfo.HasLineInfo());
-            Assert.AreEqual(3, lineInfo.LineNumber);
-            Assert.AreEqual(0, lineInfo.LinePosition);
+            Assert.AreEqual(2, lineInfo.LineNumber);
+            Assert.AreEqual(5, lineInfo.LinePosition);
         }
 
         [Test]
@@ -722,7 +800,7 @@ keyword such as type of business.""
             Post p = new Post
             {
                 Title = "How to use FromObject",
-                Categories = new [] { "LINQ to JSON" }
+                Categories = new[] { "LINQ to JSON" }
             };
 
             // serialize Post to JSON then parse JSON – SLOW!
@@ -1110,8 +1188,8 @@ keyword such as type of business.""
       }
     ]
   }
-}", o.ToString()); 
-            
+}", o.ToString());
+
             CustomAssert.IsInstanceOfType(typeof(JObject), o);
             CustomAssert.IsInstanceOfType(typeof(JObject), o["channel"]);
             Assert.AreEqual("James Newton-King", (string)o["channel"]["title"]);
@@ -1329,6 +1407,57 @@ keyword such as type of business.""
         }
 #endif
 
+#if !(NET20)
+        [JsonConverter(typeof(StringEnumConverter))]
+        public enum FooBar
+        {
+            [EnumMember(Value = "SOME_VALUE")]
+            SomeValue,
+
+            [EnumMember(Value = "SOME_OTHER_VALUE")]
+            SomeOtherValue
+        }
+
+        public class MyObject
+        {
+            public FooBar FooBar { get; set; }
+        }
+
+        [Test]
+        public void ToObject_Enum_Converter()
+        {
+            JObject o = JObject.Parse("{'FooBar':'SOME_OTHER_VALUE'}");
+
+            FooBar e = o["FooBar"].ToObject<FooBar>();
+            Assert.AreEqual(FooBar.SomeOtherValue, e);
+        }
+
+        public enum FooBarNoEnum
+        {
+            [EnumMember(Value = "SOME_VALUE")]
+            SomeValue,
+
+            [EnumMember(Value = "SOME_OTHER_VALUE")]
+            SomeOtherValue
+        }
+
+        public class MyObjectNoEnum
+        {
+            public FooBarNoEnum FooBarNoEnum { get; set; }
+        }
+
+        [Test]
+        public void ToObject_Enum_NoConverter()
+        {
+            JObject o = JObject.Parse("{'FooBarNoEnum':'SOME_OTHER_VALUE'}");
+
+            ExceptionAssert.Throws<ArgumentException>(() =>
+            {
+                o["FooBarNoEnum"].ToObject<FooBarNoEnum>();
+            }, "Could not convert 'SOME_OTHER_VALUE' to FooBarNoEnum.");
+        }
+#endif
+
         [Test]
         public void SerializeWithNoRedundentIdPropertiesTest()
         {
@@ -1417,6 +1546,40 @@ keyword such as type of business.""
 
             string json = t.ToString();
             return json;
+        }
+
+        [Test]
+        public void HashCodeTests()
+        {
+            JObject o1 = new JObject
+            {
+                ["prop"] = 1
+            };
+            JObject o2 = new JObject
+            {
+                ["prop"] = 1
+            };
+
+            Assert.IsFalse(ReferenceEquals(o1, o2));
+            Assert.IsFalse(Equals(o1, o2));
+            Assert.IsFalse(o1.GetHashCode() == o2.GetHashCode());
+            Assert.IsTrue(o1.GetDeepHashCode() == o2.GetDeepHashCode());
+            Assert.IsTrue(JToken.DeepEquals(o1, o2));
+
+            JArray a1 = new JArray
+            {
+                1
+            };
+            JArray a2 = new JArray
+            {
+                1
+            };
+
+            Assert.IsFalse(ReferenceEquals(a1, a2));
+            Assert.IsFalse(Equals(a1, a2));
+            Assert.IsFalse(a1.GetHashCode() == a2.GetHashCode());
+            Assert.IsTrue(a1.GetDeepHashCode() == a2.GetDeepHashCode());
+            Assert.IsTrue(JToken.DeepEquals(a1, a2));
         }
     }
 }

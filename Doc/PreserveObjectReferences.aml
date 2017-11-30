@@ -20,11 +20,12 @@
       contain two completely separate Person objects with the same values. Writing
       references by value will also cause problems on objects where a circular
       reference occurs.</para>
+      <autoOutline lead="none" excludeRelatedTopics="true" />
     </introduction>
     <!-- Add one or more top-level section elements.  These are collapsible.
          If using <autoOutline />, add an address attribute to identify it
          and specify a title so that it can be jumped to with a hyperlink. -->
-    <section>
+    <section address="PreserveReferencesHandling">
       <title>PreserveReferencesHandling</title>
       <content>
         <para>Setting <codeEntityReference>T:Newtonsoft.Json.PreserveReferencesHandling</codeEntityReference> will track object references
@@ -37,6 +38,10 @@
         <para>With PreserveReferencesHandling on, now only one Person object is created
         on deserialization and the list contains two references to it, mirroring
         what we started with.</para>
+ <para>
+   Metadata properties like <codeInline>$id</codeInline> must be located at the beginning of a JSON object to be successfully detected during deserialization. If you can't control
+   the order of properties in your JSON object then <codeEntityReference>T:Newtonsoft.Json.MetadataPropertyHandling</codeEntityReference> can be used to remove this restriction.
+ </para>
 <alert class="note">
   <para>References cannot be preserved when a value is set via a non-default constructor.
         With a non-default constructor, child values must be created before the parent value so they can be passed into
@@ -47,7 +52,7 @@
       </content>
     </section>
     
-    <section>
+    <section address="IsReference">
       <title>IsReference</title>
       <content>
         <para>The PreserveReferencesHandling setting on the JsonSerializer will
@@ -66,7 +71,7 @@
       </content>
     </section>
     
-    <section>
+    <section address="IReferenceResolver">
       <title>IReferenceResolver</title>
       <content>
         <para>To customize how references are generated and resolved the

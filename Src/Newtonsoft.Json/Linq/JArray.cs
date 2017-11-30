@@ -38,7 +38,7 @@ namespace Newtonsoft.Json.Linq
     /// <example>
     ///   <code lang="cs" source="..\Src\Newtonsoft.Json.Tests\Documentation\LinqToJsonTests.cs" region="LinqToJsonCreateParseArray" title="Parsing a JSON Array from Text" />
     /// </example>
-    public class JArray : JContainer, IList<JToken>
+    public partial class JArray : JContainer, IList<JToken>
     {
         private readonly List<JToken> _values = new List<JToken>();
 
@@ -46,19 +46,13 @@ namespace Newtonsoft.Json.Linq
         /// Gets the container's children tokens.
         /// </summary>
         /// <value>The container's children tokens.</value>
-        protected override IList<JToken> ChildrenTokens
-        {
-            get { return _values; }
-        }
+        protected override IList<JToken> ChildrenTokens => _values;
 
         /// <summary>
         /// Gets the node type for this <see cref="JToken"/>.
         /// </summary>
         /// <value>The type.</value>
-        public override JTokenType Type
-        {
-            get { return JTokenType.Array; }
-        }
+        public override JTokenType Type => JTokenType.Array;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JArray"/> class.
@@ -96,8 +90,7 @@ namespace Newtonsoft.Json.Linq
 
         internal override bool DeepEquals(JToken node)
         {
-            JArray t = node as JArray;
-            return (t != null && ContentsEqual(t));
+            return (node is JArray t && ContentsEqual(t));
         }
 
         internal override JToken CloneToken()
@@ -120,23 +113,24 @@ namespace Newtonsoft.Json.Linq
         /// </summary>
         /// <param name="reader">A <see cref="JsonReader"/> that will be read for the content of the <see cref="JArray"/>.</param>
         /// <param name="settings">The <see cref="JsonLoadSettings"/> used to load the JSON.
-        /// If this is null, default load settings will be used.</param>
+        /// If this is <c>null</c>, default load settings will be used.</param>
         /// <returns>A <see cref="JArray"/> that contains the JSON that was read from the specified <see cref="JsonReader"/>.</returns>
         public new static JArray Load(JsonReader reader, JsonLoadSettings settings)
         {
             if (reader.TokenType == JsonToken.None)
             {
                 if (!reader.Read())
+                {
                     throw JsonReaderException.Create(reader, "Error reading JArray from JsonReader.");
+                }
             }
 
-            while (reader.TokenType == JsonToken.Comment)
-            {
-                reader.Read();
-            }
+            reader.MoveToContent();
 
             if (reader.TokenType != JsonToken.StartArray)
+            {
                 throw JsonReaderException.Create(reader, "Error reading JArray from JsonReader. Current JsonReader item is not an array: {0}".FormatWith(CultureInfo.InvariantCulture, reader.TokenType));
+            }
 
             JArray a = new JArray();
             a.SetLineInfo(reader as IJsonLineInfo, settings);
@@ -164,7 +158,7 @@ namespace Newtonsoft.Json.Linq
         /// </summary>
         /// <param name="json">A <see cref="String"/> that contains JSON.</param>
         /// <param name="settings">The <see cref="JsonLoadSettings"/> used to load the JSON.
-        /// If this is null, default load settings will be used.</param>
+        /// If this is <c>null</c>, default load settings will be used.</param>
         /// <returns>A <see cref="JArray"/> populated from the string that contains JSON.</returns>
         /// <example>
         ///   <code lang="cs" source="..\Src\Newtonsoft.Json.Tests\Documentation\LinqToJsonTests.cs" region="LinqToJsonCreateParseArray" title="Parsing a JSON Array from Text" />
@@ -175,8 +169,10 @@ namespace Newtonsoft.Json.Linq
             {
                 JArray a = Load(reader, settings);
 
-                if (reader.Read() && reader.TokenType != JsonToken.Comment)
-                    throw JsonReaderException.Create(reader, "Additional text found in JSON string after parsing content.");
+                while (reader.Read())
+                {
+                    // Any content encountered here other than a comment will throw in the reader.
+                }
 
                 return a;
             }
@@ -186,7 +182,7 @@ namespace Newtonsoft.Json.Linq
         /// Creates a <see cref="JArray"/> from an object.
         /// </summary>
         /// <param name="o">The object that will be used to create <see cref="JArray"/>.</param>
-        /// <returns>A <see cref="JArray"/> with the values of the specified object</returns>
+        /// <returns>A <see cref="JArray"/> with the values of the specified object.</returns>
         public new static JArray FromObject(object o)
         {
             return FromObject(o, JsonSerializer.CreateDefault());
@@ -197,13 +193,15 @@ namespace Newtonsoft.Json.Linq
         /// </summary>
         /// <param name="o">The object that will be used to create <see cref="JArray"/>.</param>
         /// <param name="jsonSerializer">The <see cref="JsonSerializer"/> that will be used to read the object.</param>
-        /// <returns>A <see cref="JArray"/> with the values of the specified object</returns>
+        /// <returns>A <see cref="JArray"/> with the values of the specified object.</returns>
         public new static JArray FromObject(object o, JsonSerializer jsonSerializer)
         {
             JToken token = FromObjectInternal(o, jsonSerializer);
 
             if (token.Type != JTokenType.Array)
+            {
                 throw new ArgumentException("Object serialized to {0}. JArray instance expected.".FormatWith(CultureInfo.InvariantCulture, token.Type));
+            }
 
             return (JArray)token;
         }
@@ -233,7 +231,7 @@ namespace Newtonsoft.Json.Linq
         {
             get
             {
-                ValidationUtils.ArgumentNotNull(key, "o");
+                ValidationUtils.ArgumentNotNull(key, nameof(key));
 
                 if (!(key is int))
                 {
@@ -244,7 +242,7 @@ namespace Newtonsoft.Json.Linq
             }
             set
             {
-                ValidationUtils.ArgumentNotNull(key, "o");
+                ValidationUtils.ArgumentNotNull(key, nameof(key));
 
                 if (!(key is int))
                 {
@@ -261,8 +259,13 @@ namespace Newtonsoft.Json.Linq
         /// <value></value>
         public JToken this[int index]
         {
-            get { return GetItem(index); }
-            set { SetItem(index, value); }
+            get => GetItem(index);
+            set => SetItem(index, value);
+        }
+
+        internal override int IndexOfItem(JToken item)
+        {
+            return _values.IndexOfReference(item);
         }
 
         internal override void MergeItem(object content, JsonMergeSettings settings)
@@ -271,16 +274,18 @@ namespace Newtonsoft.Json.Linq
                 ? (IEnumerable)content
                 : null;
             if (a == null)
+            {
                 return;
+            }
 
             MergeEnumerableContent(this, a, settings);
         }
 
         #region IList<JToken> Members
         /// <summary>
-        /// Determines the index of a specific item in the <see cref="T:System.Collections.Generic.IList`1"/>.
+        /// Determines the index of a specific item in the <see cref="JArray"/>.
         /// </summary>
-        /// <param name="item">The object to locate in the <see cref="T:System.Collections.Generic.IList`1"/>.</param>
+        /// <param name="item">The object to locate in the <see cref="JArray"/>.</param>
         /// <returns>
         /// The index of <paramref name="item"/> if found in the list; otherwise, -1.
         /// </returns>
@@ -290,25 +295,25 @@ namespace Newtonsoft.Json.Linq
         }
 
         /// <summary>
-        /// Inserts an item to the <see cref="T:System.Collections.Generic.IList`1"/> at the specified index.
+        /// Inserts an item to the <see cref="JArray"/> at the specified index.
         /// </summary>
         /// <param name="index">The zero-based index at which <paramref name="item"/> should be inserted.</param>
-        /// <param name="item">The object to insert into the <see cref="T:System.Collections.Generic.IList`1"/>.</param>
-        /// <exception cref="T:System.ArgumentOutOfRangeException">
-        /// 	<paramref name="index"/> is not a valid index in the <see cref="T:System.Collections.Generic.IList`1"/>.</exception>
-        /// <exception cref="T:System.NotSupportedException">The <see cref="T:System.Collections.Generic.IList`1"/> is read-only.</exception>
+        /// <param name="item">The object to insert into the <see cref="JArray"/>.</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="index"/> is not a valid index in the <see cref="JArray"/>.
+        /// </exception>
         public void Insert(int index, JToken item)
         {
             InsertItem(index, item, false);
         }
 
         /// <summary>
-        /// Removes the <see cref="T:System.Collections.Generic.IList`1"/> item at the specified index.
+        /// Removes the <see cref="JArray"/> item at the specified index.
         /// </summary>
         /// <param name="index">The zero-based index of the item to remove.</param>
-        /// <exception cref="T:System.ArgumentOutOfRangeException">
-        /// 	<paramref name="index"/> is not a valid index in the <see cref="T:System.Collections.Generic.IList`1"/>.</exception>
-        /// <exception cref="T:System.NotSupportedException">The <see cref="T:System.Collections.Generic.IList`1"/> is read-only.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="index"/> is not a valid index in the <see cref="JArray"/>.
+        /// </exception>
         public void RemoveAt(int index)
         {
             RemoveItemAt(index);
@@ -318,7 +323,7 @@ namespace Newtonsoft.Json.Linq
         /// Returns an enumerator that iterates through the collection.
         /// </summary>
         /// <returns>
-        /// A <see cref="T:System.Collections.Generic.IEnumerator`1" /> that can be used to iterate through the collection.
+        /// A <see cref="IEnumerator{T}"/> of <see cref="JToken"/> that can be used to iterate through the collection.
         /// </returns>
         public IEnumerator<JToken> GetEnumerator()
         {
@@ -328,30 +333,28 @@ namespace Newtonsoft.Json.Linq
 
         #region ICollection<JToken> Members
         /// <summary>
-        /// Adds an item to the <see cref="T:System.Collections.Generic.ICollection`1"/>.
+        /// Adds an item to the <see cref="JArray"/>.
         /// </summary>
-        /// <param name="item">The object to add to the <see cref="T:System.Collections.Generic.ICollection`1"/>.</param>
-        /// <exception cref="T:System.NotSupportedException">The <see cref="T:System.Collections.Generic.ICollection`1"/> is read-only.</exception>
+        /// <param name="item">The object to add to the <see cref="JArray"/>.</param>
         public void Add(JToken item)
         {
             Add((object)item);
         }
 
         /// <summary>
-        /// Removes all items from the <see cref="T:System.Collections.Generic.ICollection`1"/>.
+        /// Removes all items from the <see cref="JArray"/>.
         /// </summary>
-        /// <exception cref="T:System.NotSupportedException">The <see cref="T:System.Collections.Generic.ICollection`1"/> is read-only. </exception>
         public void Clear()
         {
             ClearItems();
         }
 
         /// <summary>
-        /// Determines whether the <see cref="T:System.Collections.Generic.ICollection`1"/> contains a specific value.
+        /// Determines whether the <see cref="JArray"/> contains a specific value.
         /// </summary>
-        /// <param name="item">The object to locate in the <see cref="T:System.Collections.Generic.ICollection`1"/>.</param>
+        /// <param name="item">The object to locate in the <see cref="JArray"/>.</param>
         /// <returns>
-        /// true if <paramref name="item"/> is found in the <see cref="T:System.Collections.Generic.ICollection`1"/>; otherwise, false.
+        /// <c>true</c> if <paramref name="item"/> is found in the <see cref="JArray"/>; otherwise, <c>false</c>.
         /// </returns>
         public bool Contains(JToken item)
         {
@@ -359,7 +362,7 @@ namespace Newtonsoft.Json.Linq
         }
 
         /// <summary>
-        /// Copies to.
+        /// Copies the elements of the <see cref="JArray"/> to an array, starting at a particular array index.
         /// </summary>
         /// <param name="array">The array.</param>
         /// <param name="arrayIndex">Index of the array.</param>
@@ -369,22 +372,18 @@ namespace Newtonsoft.Json.Linq
         }
 
         /// <summary>
-        /// Gets a value indicating whether the <see cref="T:System.Collections.Generic.ICollection`1" /> is read-only.
+        /// Gets a value indicating whether the <see cref="JArray"/> is read-only.
         /// </summary>
-        /// <returns>true if the <see cref="T:System.Collections.Generic.ICollection`1" /> is read-only; otherwise, false.</returns>
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
+        /// <returns><c>true</c> if the <see cref="JArray"/> is read-only; otherwise, <c>false</c>.</returns>
+        public bool IsReadOnly => false;
 
         /// <summary>
-        /// Removes the first occurrence of a specific object from the <see cref="T:System.Collections.Generic.ICollection`1"/>.
+        /// Removes the first occurrence of a specific object from the <see cref="JArray"/>.
         /// </summary>
-        /// <param name="item">The object to remove from the <see cref="T:System.Collections.Generic.ICollection`1"/>.</param>
+        /// <param name="item">The object to remove from the <see cref="JArray"/>.</param>
         /// <returns>
-        /// true if <paramref name="item"/> was successfully removed from the <see cref="T:System.Collections.Generic.ICollection`1"/>; otherwise, false. This method also returns false if <paramref name="item"/> is not found in the original <see cref="T:System.Collections.Generic.ICollection`1"/>.
+        /// <c>true</c> if <paramref name="item"/> was successfully removed from the <see cref="JArray"/>; otherwise, <c>false</c>. This method also returns <c>false</c> if <paramref name="item"/> is not found in the original <see cref="JArray"/>.
         /// </returns>
-        /// <exception cref="T:System.NotSupportedException">The <see cref="T:System.Collections.Generic.ICollection`1"/> is read-only.</exception>
         public bool Remove(JToken item)
         {
             return RemoveItem(item);

@@ -42,7 +42,7 @@ namespace Newtonsoft.Json
         OptOut = 0,
 
         /// <summary>
-        /// Only members must be marked with <see cref="JsonPropertyAttribute"/> or <see cref="DataMemberAttribute"/> are serialized.
+        /// Only members marked with <see cref="JsonPropertyAttribute"/> or <see cref="DataMemberAttribute"/> are serialized.
         /// This member serialization mode can also be set by marking the class with <see cref="DataContractAttribute"/>.
         /// </summary>
         OptIn = 1,
@@ -50,7 +50,7 @@ namespace Newtonsoft.Json
         /// <summary>
         /// All public and private fields are serialized. Members can be excluded using <see cref="JsonIgnoreAttribute"/> or <see cref="NonSerializedAttribute"/>.
         /// This member serialization mode can also be set by marking the class with <see cref="SerializableAttribute"/>
-        /// and setting IgnoreSerializableAttribute on <see cref="DefaultContractResolver"/> to false.
+        /// and setting IgnoreSerializableAttribute on <see cref="DefaultContractResolver"/> to <c>false</c>.
         /// </summary>
         Fields = 2
 #pragma warning restore 1584,1711,1572,1581,1580,1574

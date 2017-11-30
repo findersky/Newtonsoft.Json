@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET35 || NET20 || PORTABLE40)
+#if HAVE_DYNAMIC
 
 using System;
 using System.Collections.Generic;
@@ -36,7 +36,7 @@ using Newtonsoft.Json.Utilities;
 namespace Newtonsoft.Json.Converters
 {
     /// <summary>
-    /// Converts an ExpandoObject to and from JSON.
+    /// Converts an <see cref="ExpandoObject"/> to and from JSON.
     /// </summary>
     public class ExpandoObjectConverter : JsonConverter
     {
@@ -66,10 +66,9 @@ namespace Newtonsoft.Json.Converters
 
         private object ReadValue(JsonReader reader)
         {
-            while (reader.TokenType == JsonToken.Comment)
+            if (!reader.MoveToContent())
             {
-                if (!reader.Read())
-                    throw JsonSerializationException.Create(reader, "Unexpected end when reading ExpandoObject.");
+                throw JsonSerializationException.Create(reader, "Unexpected end when reading ExpandoObject.");
             }
 
             switch (reader.TokenType)
@@ -80,7 +79,9 @@ namespace Newtonsoft.Json.Converters
                     return ReadList(reader);
                 default:
                     if (JsonTokenUtils.IsPrimitiveToken(reader.TokenType))
+                    {
                         return reader.Value;
+                    }
 
                     throw JsonSerializationException.Create(reader, "Unexpected token when converting ExpandoObject: {0}".FormatWith(CultureInfo.InvariantCulture, reader.TokenType));
             }
@@ -121,7 +122,9 @@ namespace Newtonsoft.Json.Converters
                         string propertyName = reader.Value.ToString();
 
                         if (!reader.Read())
+                        {
                             throw JsonSerializationException.Create(reader, "Unexpected end when reading ExpandoObject.");
+                        }
 
                         object v = ReadValue(reader);
 

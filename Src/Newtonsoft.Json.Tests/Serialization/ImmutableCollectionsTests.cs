@@ -30,11 +30,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -108,11 +104,11 @@ namespace Newtonsoft.Json.Tests.Serialization
         public void SerializeArray()
         {
             ImmutableArray<string> l = ImmutableArray.CreateRange(new List<string>
-                {
-                  "One",
-                  "II",
-                  "3"
-                });
+            {
+                "One",
+                "II",
+                "3"
+            });
 
             string json = JsonConvert.SerializeObject(l, Formatting.Indented);
             StringAssert.AreEqual(@"[
@@ -440,4 +436,5 @@ namespace Newtonsoft.Json.Tests.Serialization
         #endregion
     }
 }
+
 #endif

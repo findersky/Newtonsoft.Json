@@ -51,14 +51,14 @@ namespace Newtonsoft.Json.Utilities
 
         public static TimeSpan GetUtcOffset(this DateTime d)
         {
-#if NET20
+#if !HAVE_TIME_ZONE_INFO
             return TimeZone.CurrentTimeZone.GetUtcOffset(d);
 #else
             return TimeZoneInfo.Local.GetUtcOffset(d);
 #endif
         }
 
-#if !(PORTABLE40 || PORTABLE)
+#if !(PORTABLE40 || PORTABLE) || NETSTANDARD1_3
         public static XmlDateTimeSerializationMode ToSerializationMode(DateTimeKind kind)
         {
             switch (kind)
@@ -70,7 +70,22 @@ namespace Newtonsoft.Json.Utilities
                 case DateTimeKind.Utc:
                     return XmlDateTimeSerializationMode.Utc;
                 default:
-                    throw MiscellaneousUtils.CreateArgumentOutOfRangeException("kind", kind, "Unexpected DateTimeKind value.");
+                    throw MiscellaneousUtils.CreateArgumentOutOfRangeException(nameof(kind), kind, "Unexpected DateTimeKind value.");
+            }
+        }
+#else
+        public static string ToDateTimeFormat(DateTimeKind kind)
+        {
+            switch (kind)
+            {
+                case DateTimeKind.Local:
+                    return IsoDateFormat;
+                case DateTimeKind.Unspecified:
+                    return "yyyy-MM-ddTHH:mm:ss.FFFFFFF";
+                case DateTimeKind.Utc:
+                    return "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ";
+                default:
+                    throw MiscellaneousUtils.CreateArgumentOutOfRangeException(nameof(kind), kind, "Unexpected DateTimeKind value.");
             }
         }
 #endif
@@ -196,7 +211,6 @@ namespace Newtonsoft.Json.Utilities
         }
 
         #region Parse
-
         internal static bool TryParseDateTimeIso(StringReference text, DateTimeZoneHandling dateTimeZoneHandling, out DateTime dt)
         {
             DateTimeParser dateTimeParser = new DateTimeParser();
@@ -228,7 +242,9 @@ namespace Newtonsoft.Json.Utilities
                     {
                         ticks += d.GetUtcOffset().Ticks;
                         if (ticks > DateTime.MaxValue.Ticks)
+                        {
                             ticks = DateTime.MaxValue.Ticks;
+                        }
 
                         d = new DateTime(ticks, DateTimeKind.Local);
                     }
@@ -246,7 +262,9 @@ namespace Newtonsoft.Json.Utilities
                     {
                         ticks += d.GetUtcOffset().Ticks;
                         if (ticks < DateTime.MinValue.Ticks)
+                        {
                             ticks = DateTime.MinValue.Ticks;
+                        }
 
                         d = new DateTime(ticks, DateTimeKind.Local);
                     }
@@ -258,7 +276,7 @@ namespace Newtonsoft.Json.Utilities
             return true;
         }
 
-#if !NET20
+#if HAVE_DATE_TIME_OFFSET
         internal static bool TryParseDateTimeOffsetIso(StringReference text, out DateTimeOffset dt)
         {
             DateTimeParser dateTimeParser = new DateTimeParser();
@@ -395,7 +413,7 @@ namespace Newtonsoft.Json.Utilities
             return false;
         }
 
-#if !NET20
+#if HAVE_DATE_TIME_OFFSET
         internal static bool TryParseDateTimeOffset(StringReference s, string dateFormatString, CultureInfo culture, out DateTimeOffset dt)
         {
             if (s.Length > 0)
@@ -449,9 +467,11 @@ namespace Newtonsoft.Json.Utilities
                 else if (s.Length >= 19 && s.Length <= 40 && char.IsDigit(s[0]) && s[10] == 'T')
                 {
                     if (DateTimeOffset.TryParseExact(s, IsoDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out dt))
-                    if (TryParseDateTimeOffsetIso(new StringReference(s.ToCharArray(), 0, s.Length), out dt))
                     {
-                        return true;
+                        if (TryParseDateTimeOffsetIso(new StringReference(s.ToCharArray(), 0, s.Length), out dt))
+                        {
+                            return true;
+                        }
                     }
                 }
 
@@ -476,7 +496,9 @@ namespace Newtonsoft.Json.Utilities
             int index = text.IndexOf('+', 7, text.Length - 8);
 
             if (index == -1)
+            {
                 index = text.IndexOf('-', 7, text.Length - 8);
+            }
 
             if (index != -1)
             {
@@ -499,11 +521,7 @@ namespace Newtonsoft.Json.Utilities
 
         private static bool TryParseDateTimeMicrosoft(StringReference text, DateTimeZoneHandling dateTimeZoneHandling, out DateTime dt)
         {
-            long ticks;
-            TimeSpan offset;
-            DateTimeKind kind;
-
-            if (!TryParseMicrosoftDate(text, out ticks, out offset, out kind))
+            if (!TryParseMicrosoftDate(text, out long ticks, out _, out DateTimeKind kind))
             {
                 dt = default(DateTime);
                 return false;
@@ -530,8 +548,7 @@ namespace Newtonsoft.Json.Utilities
 
         private static bool TryParseDateTimeExact(string text, DateTimeZoneHandling dateTimeZoneHandling, string dateFormatString, CultureInfo culture, out DateTime dt)
         {
-            DateTime temp;
-            if (DateTime.TryParseExact(text, dateFormatString, culture, DateTimeStyles.RoundtripKind, out temp))
+            if (DateTime.TryParseExact(text, dateFormatString, culture, DateTimeStyles.RoundtripKind, out DateTime temp))
             {
                 temp = EnsureDateTime(temp, dateTimeZoneHandling);
                 dt = temp;
@@ -542,14 +559,10 @@ namespace Newtonsoft.Json.Utilities
             return false;
         }
 
-#if !NET20
+#if HAVE_DATE_TIME_OFFSET
         private static bool TryParseDateTimeOffsetMicrosoft(StringReference text, out DateTimeOffset dt)
         {
-            long ticks;
-            TimeSpan offset;
-            DateTimeKind kind;
-
-            if (!TryParseMicrosoftDate(text, out ticks, out offset, out kind))
+            if (!TryParseMicrosoftDate(text, out long ticks, out TimeSpan offset, out _))
             {
                 dt = default(DateTime);
                 return false;
@@ -563,8 +576,7 @@ namespace Newtonsoft.Json.Utilities
 
         private static bool TryParseDateTimeOffsetExact(string text, string dateFormatString, CultureInfo culture, out DateTimeOffset dt)
         {
-            DateTimeOffset temp;
-            if (DateTimeOffset.TryParseExact(text, dateFormatString, culture, DateTimeStyles.RoundtripKind, out temp))
+            if (DateTimeOffset.TryParseExact(text, dateFormatString, culture, DateTimeStyles.RoundtripKind, out DateTimeOffset temp))
             {
                 dt = temp;
                 return true;
@@ -579,8 +591,7 @@ namespace Newtonsoft.Json.Utilities
         {
             bool negative = (offsetText[startIndex] == '-');
 
-            int hours;
-            if (ConvertUtils.Int32TryParse(offsetText.Chars, startIndex + 1, 2, out hours) != ParseResult.Success)
+            if (ConvertUtils.Int32TryParse(offsetText.Chars, startIndex + 1, 2, out int hours) != ParseResult.Success)
             {
                 offset = default(TimeSpan);
                 return false;
@@ -642,7 +653,9 @@ namespace Newtonsoft.Json.Utilities
                 {
                     case DateTimeKind.Unspecified:
                         if (value != DateTime.MaxValue && value != DateTime.MinValue)
+                        {
                             pos = WriteDateTimeOffset(chars, pos, o, format);
+                        }
                         break;
                     case DateTimeKind.Local:
                         pos = WriteDateTimeOffset(chars, pos, o, format);
@@ -674,10 +687,7 @@ namespace Newtonsoft.Json.Utilities
         {
             int length = 19;
 
-            int year;
-            int month;
-            int day;
-            GetDateValues(dt, out year, out month, out day);
+            GetDateValues(dt, out int year, out int month, out int day);
 
             CopyIntToCharArray(chars, start, year, 4);
             chars[start + 4] = '-';
@@ -729,7 +739,9 @@ namespace Newtonsoft.Json.Utilities
             start += 2;
 
             if (format == DateFormatHandling.IsoDateFormat)
+            {
                 chars[start++] = ':';
+            }
 
             int absMinutes = Math.Abs(offset.Minutes);
             CopyIntToCharArray(chars, start, absMinutes, 2);
@@ -738,7 +750,7 @@ namespace Newtonsoft.Json.Utilities
             return start;
         }
 
-#if !NET20
+#if HAVE_DATE_TIME_OFFSET
         internal static void WriteDateTimeOffsetString(TextWriter writer, DateTimeOffset value, DateFormatHandling format, string formatString, CultureInfo culture)
         {
             if (string.IsNullOrEmpty(formatString))
@@ -769,7 +781,9 @@ namespace Newtonsoft.Json.Utilities
             int y100 = n / DaysPer100Years;
             // Last 100-year period has an extra day, so decrement result if 4
             if (y100 == 4)
+            {
                 y100 = 3;
+            }
             // n = day number within 100-year period
             n -= y100 * DaysPer100Years;
             // y4 = number of whole 4-year periods within 100-year period
@@ -780,7 +794,9 @@ namespace Newtonsoft.Json.Utilities
             int y1 = n / DaysPerYear;
             // Last year has an extra day, so decrement result if 4
             if (y1 == 4)
+            {
                 y1 = 3;
+            }
 
             year = y400 * 400 + y100 * 100 + y4 * 4 + y1 + 1;
 
