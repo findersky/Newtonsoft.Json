@@ -23,43 +23,34 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if HAVE_BENCHMARKS
-
+#if NETSTANDARD2_0
+using System;
+using System.Data;
 using System.IO;
-using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
+using System.Linq;
+using Newtonsoft.Json.Serialization;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
+using NUnit.Framework;
+#endif
 
-namespace Newtonsoft.Json.Tests.Benchmarks
+namespace Newtonsoft.Json.Tests.Issues
 {
-    public class JsonTextWriterBenchmarks
+    [TestFixture]
+    public class Issue1404 : TestFixtureBase
     {
-        private static readonly string UnicodeCharsString = (new string('\0', 30));
-
-        [Benchmark]
-        public string SerializeUnicodeChars()
+        [Test]
+        public void Test()
         {
-            StringWriter sw = new StringWriter();
-            JsonTextWriter jsonTextWriter = new JsonTextWriter(sw);
-            jsonTextWriter.WriteValue(UnicodeCharsString);
-            jsonTextWriter.Flush();
+            DefaultContractResolver resolver = new DefaultContractResolver();
 
-            return sw.ToString();
-        }
+            JsonContract contract = resolver.ResolveContract(typeof(DirectoryInfo));
 
-        [Benchmark]
-        public string SerializeIntegers()
-        {
-            StringWriter sw = new StringWriter();
-            JsonTextWriter jsonTextWriter = new JsonTextWriter(sw);
-            for (int i = 0; i < 10000; i++)
-            {
-                jsonTextWriter.WriteValue(i);
-            }
-            jsonTextWriter.Flush();
-
-            return sw.ToString();
+            Assert.AreEqual(JsonContractType.Object, contract.ContractType);
         }
     }
 }
-
 #endif
