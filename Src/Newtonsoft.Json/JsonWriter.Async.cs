@@ -293,7 +293,7 @@ namespace Newtonsoft.Json
                     t = WriteNullAsync(cancellationToken);
                     if (!t.IsCompletedSucessfully())
                     {
-                        return AwaitProperty(t, levelsToComplete, token, type, cancellationToken);
+                        return AwaitProperty(t, levelsToComplete, token, cancellationToken);
                     }
                 }
 
@@ -304,7 +304,7 @@ namespace Newtonsoft.Json
                         t = WriteIndentAsync(cancellationToken);
                         if (!t.IsCompletedSucessfully())
                         {
-                            return AwaitIndent(t, levelsToComplete, token, type, cancellationToken);
+                            return AwaitIndent(t, levelsToComplete, token, cancellationToken);
                         }
                     }
                 }
@@ -312,7 +312,7 @@ namespace Newtonsoft.Json
                 t = WriteEndAsync(token, cancellationToken);
                 if (!t.IsCompletedSucessfully())
                 {
-                    return AwaitEnd(t, levelsToComplete, type, cancellationToken);
+                    return AwaitEnd(t, levelsToComplete, cancellationToken);
                 }
 
                 UpdateCurrentState();
@@ -321,7 +321,7 @@ namespace Newtonsoft.Json
             return AsyncUtils.CompletedTask;
 
             // Local functions, params renamed (capitalized) so as not to capture and allocate when calling async
-            async Task AwaitProperty(Task task, int LevelsToComplete, JsonToken token, JsonContainerType Type, CancellationToken CancellationToken)
+            async Task AwaitProperty(Task task, int LevelsToComplete, JsonToken token, CancellationToken CancellationToken)
             {
                 await task.ConfigureAwait(false);
 
@@ -338,10 +338,10 @@ namespace Newtonsoft.Json
 
                 UpdateCurrentState();
 
-                await AwaitRemaining(LevelsToComplete, Type, CancellationToken).ConfigureAwait(false);
+                await AwaitRemaining(LevelsToComplete, CancellationToken).ConfigureAwait(false);
             }
 
-            async Task AwaitIndent(Task task, int LevelsToComplete, JsonToken token, JsonContainerType Type, CancellationToken CancellationToken)
+            async Task AwaitIndent(Task task, int LevelsToComplete, JsonToken token, CancellationToken CancellationToken)
             {
                 await task.ConfigureAwait(false);
 
@@ -351,10 +351,10 @@ namespace Newtonsoft.Json
 
                 UpdateCurrentState();
 
-                await AwaitRemaining(LevelsToComplete, Type, CancellationToken).ConfigureAwait(false);
+                await AwaitRemaining(LevelsToComplete, CancellationToken).ConfigureAwait(false);
             }
 
-            async Task AwaitEnd(Task task, int LevelsToComplete, JsonContainerType Type, CancellationToken CancellationToken)
+            async Task AwaitEnd(Task task, int LevelsToComplete, CancellationToken CancellationToken)
             {
                 await task.ConfigureAwait(false);
 
@@ -362,10 +362,10 @@ namespace Newtonsoft.Json
 
                 UpdateCurrentState();
 
-                await AwaitRemaining(LevelsToComplete, Type, CancellationToken).ConfigureAwait(false);
+                await AwaitRemaining(LevelsToComplete, CancellationToken).ConfigureAwait(false);
             }
 
-            async Task AwaitRemaining(int LevelsToComplete, JsonContainerType Type, CancellationToken CancellationToken)
+            async Task AwaitRemaining(int LevelsToComplete, CancellationToken CancellationToken)
             {
                 while (LevelsToComplete-- > 0)
                 {
@@ -1776,14 +1776,7 @@ namespace Newtonsoft.Json
 #if HAVE_ICONVERTIBLE
                         if (value is IConvertible convertible)
                         {
-                            // the value is a non-standard IConvertible
-                            // convert to the underlying value and retry
-                            TypeInformation typeInformation = ConvertUtils.GetTypeInformation(convertible);
-
-                            // if convertible has an underlying typecode of Object then attempt to convert it to a string
-                            typeCode = typeInformation.TypeCode == PrimitiveTypeCode.Object ? PrimitiveTypeCode.String : typeInformation.TypeCode;
-                            Type resolvedType = typeInformation.TypeCode == PrimitiveTypeCode.Object ? typeof(string) : typeInformation.Type;
-                            value = convertible.ToType(resolvedType, CultureInfo.InvariantCulture);
+                            ResolveConvertibleValue(convertible, out typeCode, out value);
                             continue;
                         }
 #endif

@@ -23,14 +23,14 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if NETSTANDARD2_0
 using System;
-using System.Data;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
+using System.Reflection;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using Newtonsoft.Json.Utilities;
 #if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
@@ -42,21 +42,24 @@ using NUnit.Framework;
 namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class Issue1404 : TestFixtureBase
+    public class Issue1592 : TestFixtureBase
     {
         [Test]
         public void Test()
         {
-            Type t = typeof(FileSystemInfo);
+            string json = @"{
+""test customer's"": ""testing""
+}";
 
-            Assert.IsTrue(t.ImplementInterface(typeof(ISerializable)));
+            StringReader stringReader = new StringReader(json);
+            JsonTextReader reader = new JsonTextReader(stringReader);
 
-            DefaultContractResolver resolver = new DefaultContractResolver();
+            reader.Read();
+            reader.Read();
+            reader.Read();
 
-            JsonContract contract = resolver.ResolveContract(t);
-
-            Assert.AreEqual(JsonContractType.Object, contract.ContractType);
+            Assert.AreEqual("testing", reader.Value);
+            Assert.AreEqual("['test customer\\'s']", reader.Path);
         }
     }
 }
-#endif

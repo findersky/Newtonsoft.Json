@@ -23,14 +23,16 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if NETSTANDARD2_0
+#if !(NET20 || NET35)
 using System;
-using System.Data;
+using System.Collections;
+using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
+using System.Reflection;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using Newtonsoft.Json.Utilities;
 #if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
@@ -42,20 +44,37 @@ using NUnit.Framework;
 namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class Issue1404 : TestFixtureBase
+    public class Issue1593 : TestFixtureBase
     {
         [Test]
         public void Test()
         {
-            Type t = typeof(FileSystemInfo);
+            string json = JsonConvert.SerializeObject(CreateModel());
+            Assert.AreEqual(@"{""Specific"":2,""A"":1}", json);
+        }
 
-            Assert.IsTrue(t.ImplementInterface(typeof(ISerializable)));
+        class BaseModel
+        {
+            public BaseModel()
+            {
+                Extra = new ExpandoObject();
+            }
+            [JsonExtensionData]
+            public ExpandoObject Extra { get; set; }
+        }
 
-            DefaultContractResolver resolver = new DefaultContractResolver();
+        class SpecificModel : BaseModel
+        {
+            public int Specific { get; set; }
+        }
 
-            JsonContract contract = resolver.ResolveContract(t);
-
-            Assert.AreEqual(JsonContractType.Object, contract.ContractType);
+        BaseModel CreateModel()
+        {
+            var model = new SpecificModel();
+            var extra = model.Extra as IDictionary<string, object>;
+            extra["A"] = 1;
+            model.Specific = 2;
+            return model;
         }
     }
 }

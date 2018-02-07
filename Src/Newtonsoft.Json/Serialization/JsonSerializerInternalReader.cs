@@ -955,7 +955,7 @@ namespace Newtonsoft.Json.Serialization
                         {
                             if (value is string)
                             {
-                                return Enum.Parse(contract.NonNullableUnderlyingType, value.ToString(), true);
+                                return EnumUtils.ParseEnum(contract.NonNullableUnderlyingType, value.ToString(), false);
                             }
                             if (ConvertUtils.IsInteger(primitiveContract.TypeCode))
                             {
@@ -1056,7 +1056,7 @@ namespace Newtonsoft.Json.Serialization
                 property.ObjectCreationHandling.GetValueOrDefault(Serializer._objectCreationHandling);
 
             if ((objectCreationHandling != ObjectCreationHandling.Replace)
-                && (tokenType == JsonToken.StartArray || tokenType == JsonToken.StartObject)
+                && (tokenType == JsonToken.StartArray || tokenType == JsonToken.StartObject || propertyConverter != null)
                 && property.Readable)
             {
                 currentValue = property.ValueProvider.GetValue(target);

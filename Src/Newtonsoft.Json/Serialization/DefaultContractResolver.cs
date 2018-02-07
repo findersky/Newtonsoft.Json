@@ -35,6 +35,7 @@ using System.ComponentModel;
 using System.Dynamic;
 #endif
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
 #if HAVE_CAS
@@ -63,6 +64,13 @@ namespace Newtonsoft.Json.Serialization
 
         // Json.NET Schema requires a property
         internal static IContractResolver Instance => _instance;
+
+        private static readonly string[] BlacklistedTypeNames =
+        {
+            "System.IO.DriveInfo",
+            "System.IO.FileInfo",
+            "System.IO.DirectoryInfo"
+        };
 
         private static readonly JsonConverter[] BuiltInConverters =
         {
@@ -308,6 +316,13 @@ namespace Newtonsoft.Json.Serialization
         /// <returns>A <see cref="JsonObjectContract"/> for the given type.</returns>
         protected virtual JsonObjectContract CreateObjectContract(Type objectType)
         {
+            // serializing DirectoryInfo without ISerializable will stackoverflow
+            // https://github.com/JamesNK/Newtonsoft.Json/issues/1541
+            if (Array.IndexOf(BlacklistedTypeNames, objectType.FullName) != -1)
+            {
+                throw new JsonSerializationException("Unable to serialize instance of '{0}'.".FormatWith(CultureInfo.InvariantCulture, objectType));
+            }
+
             JsonObjectContract contract = new JsonObjectContract(objectType);
             InitializeContract(contract);
 
@@ -480,6 +495,13 @@ namespace Newtonsoft.Json.Serialization
                  : null;
                 Func<object> createExtensionDataDictionary = JsonTypeReflector.ReflectionDelegateFactory.CreateDefaultConstructor<object>(createdType);
                 MethodInfo addMethod = t.GetMethod("Add", new[] { keyType, valueType });
+                if (addMethod == null)
+                {
+                    // Add is explicitly implemented and non-public
+                    // get from dictionary interface
+                    addMethod = dictionaryType.GetMethod("Add", new[] {keyType, valueType});
+                }
+
                 MethodCall<object, object> setExtensionDataDictionaryValue = JsonTypeReflector.ReflectionDelegateFactory.CreateMethodCall<object>(addMethod);
 
                 ExtensionDataSetter extensionDataSetter = (o, key, value) =>
@@ -885,7 +907,7 @@ namespace Newtonsoft.Json.Serialization
                     case "System.Collections.Concurrent.ConcurrentQueue`1":
                     case "System.Collections.Concurrent.ConcurrentStack`1":
                     case "System.Collections.Concurrent.ConcurrentBag`1":
-                    case "System.Collections.Concurrent.ConcurrentDictionary`2":
+                    case JsonTypeReflector.ConcurrentDictionaryTypeName:
                     case "System.Collections.ObjectModel.ObservableCollection`1":
                         return true;
                 }
@@ -1152,6 +1174,15 @@ namespace Newtonsoft.Json.Serialization
                 return CreateDictionaryContract(objectType);
             }
 
+#if HAVE_DATA_CONTRACTS
+            // don't use GetDataContractAttribute because it looks for the attribute on base classes
+            DataContractAttribute dataContractAttribute = JsonTypeReflector.GetCachedAttribute<DataContractAttribute>(objectType);
+            if (dataContractAttribute != null)
+            {
+                return CreateObjectContract(objectType);
+            }
+#endif
+
             if (t == typeof(JToken) || t.IsSubclassOf(typeof(JToken)))
             {
                 return CreateLinqContract(objectType);
@@ -1164,7 +1195,7 @@ namespace Newtonsoft.Json.Serialization
 
             if (typeof(IEnumerable).IsAssignableFrom(t))
             {
-                return CreateArrayContract(objectType);
+                return CreateArrayContract(t);
             }
 
             if (CanConvertToString(t))

@@ -23,15 +23,9 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if NETSTANDARD2_0
 using System;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Runtime.Serialization;
-using Newtonsoft.Json.Serialization;
-using Newtonsoft.Json.Utilities;
 #if DNXCORE50
+using System.Reflection;
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -42,21 +36,24 @@ using NUnit.Framework;
 namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class Issue1404 : TestFixtureBase
+    public class Issue1561 : TestFixtureBase
     {
         [Test]
         public void Test()
         {
-            Type t = typeof(FileSystemInfo);
+            Data data = new Data
+            {
+                Value = 1.1m
+            };
 
-            Assert.IsTrue(t.ImplementInterface(typeof(ISerializable)));
+            string serialized = JsonConvert.SerializeObject(data);
 
-            DefaultContractResolver resolver = new DefaultContractResolver();
+            Assert.AreEqual(@"{""Value"":1.1}", serialized);
+        }
 
-            JsonContract contract = resolver.ResolveContract(t);
-
-            Assert.AreEqual(JsonContractType.Object, contract.ContractType);
+        public class Data
+        {
+            public decimal? Value { get; set; }
         }
     }
 }
-#endif

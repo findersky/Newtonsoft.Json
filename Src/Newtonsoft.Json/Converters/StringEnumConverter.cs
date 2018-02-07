@@ -93,13 +93,11 @@ namespace Newtonsoft.Json.Converters
 
             Enum e = (Enum)value;
 
-            string enumName = e.ToString("G");
-
-            if (char.IsNumber(enumName[0]) || enumName[0] == '-')
+            if (!EnumUtils.TryToString(e.GetType(), value, CamelCaseText, out string enumName))
             {
                 if (!AllowIntegerValues)
                 {
-                    throw JsonSerializationException.Create(null, writer.ContainerPath, "Integer value {0} is not allowed.".FormatWith(CultureInfo.InvariantCulture, enumName), null);
+                    throw JsonSerializationException.Create(null, writer.ContainerPath, "Integer value {0} is not allowed.".FormatWith(CultureInfo.InvariantCulture, e.ToString("D")), null);
                 }
 
                 // enum value has no name so write number
@@ -107,11 +105,7 @@ namespace Newtonsoft.Json.Converters
             }
             else
             {
-                Type enumType = e.GetType();
-
-                string finalName = EnumUtils.ToEnumName(enumType, enumName, CamelCaseText);
-
-                writer.WriteValue(finalName);
+                writer.WriteValue(enumName);
             }
         }
 
@@ -144,7 +138,12 @@ namespace Newtonsoft.Json.Converters
                 {
                     string enumText = reader.Value.ToString();
 
-                    return EnumUtils.ParseEnumName(enumText, isNullable, !AllowIntegerValues, t);
+                    if (enumText == string.Empty && isNullable)
+                    {
+                        return null;
+                    }
+
+                    return EnumUtils.ParseEnum(t, enumText, !AllowIntegerValues);
                 }
 
                 if (reader.TokenType == JsonToken.Integer)

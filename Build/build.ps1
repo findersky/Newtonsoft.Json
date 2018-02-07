@@ -2,7 +2,7 @@
   $zipFileName = "Json110r1.zip"
   $majorVersion = "11.0"
   $majorWithReleaseVersion = "11.0.1"
-  $nugetPrerelease = "beta1"
+  $nugetPrerelease = "beta3"
   $version = GetVersion $majorWithReleaseVersion
   $packageId = "Newtonsoft.Json"
   $signAssemblies = $false
@@ -13,7 +13,7 @@
   $treatWarningsAsErrors = $false
   $workingName = if ($workingName) {$workingName} else {"Working"}
   $netCliChannel = "2.0"
-  $netCliVersion = "2.0.0"
+  $netCliVersion = "2.1.4"
   $nugetUrl = "http://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
 
   $baseDir  = resolve-path ..
@@ -26,9 +26,9 @@
   $workingSourceDir = "$workingDir\Src"
 
   $nugetPath = "$buildDir\Temp\nuget.exe"
-  $vswhereVersion = "2.1.4"
+  $vswhereVersion = "2.3.2"
   $vswherePath = "$buildDir\Temp\vswhere.$vswhereVersion"
-  $nunitConsoleVersion = "3.7.0"
+  $nunitConsoleVersion = "3.8.0"
   $nunitConsolePath = "$buildDir\Temp\NUnit.ConsoleRunner.$nunitConsoleVersion"
 
   $builds = @(

@@ -23,15 +23,13 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if NETSTANDARD2_0
 using System;
-using System.Data;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using Newtonsoft.Json.Serialization;
-using Newtonsoft.Json.Utilities;
+using Newtonsoft.Json.Converters;
 #if DNXCORE50
+using System.Reflection;
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
@@ -42,21 +40,23 @@ using NUnit.Framework;
 namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class Issue1404 : TestFixtureBase
+    public class Issue1574 : TestFixtureBase
     {
         [Test]
         public void Test()
         {
-            Type t = typeof(FileSystemInfo);
+            TestClass c = new TestClass();
+            string json = JsonConvert.SerializeObject(c, Formatting.Indented);
 
-            Assert.IsTrue(t.ImplementInterface(typeof(ISerializable)));
+            Assert.AreEqual("{}", json);
+        }
 
-            DefaultContractResolver resolver = new DefaultContractResolver();
+        public enum ServerType { STUN, TURN };
 
-            JsonContract contract = resolver.ResolveContract(t);
-
-            Assert.AreEqual(JsonContractType.Object, contract.ContractType);
+        public class TestClass
+        {
+            [JsonIgnore]
+            public IEnumerable<ServerType> ServerTypes => Enum.GetValues(typeof(ServerType)).Cast<ServerType>();
         }
     }
 }
-#endif
