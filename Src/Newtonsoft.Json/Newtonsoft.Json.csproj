@@ -21,7 +21,7 @@
     <PackageIconUrl>https://www.newtonsoft.com/content/images/nugeticon.png</PackageIconUrl>
     <PackageProjectUrl>https://www.newtonsoft.com/json</PackageProjectUrl>
     <PackageLicenseUrl>https://raw.github.com/JamesNK/Newtonsoft.Json/master/LICENSE.md</PackageLicenseUrl>
-    <RepositoryUrl>https://github.com/JamesNK/Newtonsoft.Json</RepositoryUrl>
+    <RepositoryUrl>https://github.com/JamesNK/Newtonsoft.Json.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RootNamespace>Newtonsoft.Json</RootNamespace>
     <AssemblyName>Newtonsoft.Json</AssemblyName>
@@ -31,7 +31,6 @@
   <ItemGroup>
     <None Remove="**\*.orig" />
     <None Include="..\..\LICENSE.md" Pack="true" PackagePath="LICENSE.md" />
-    <None Include="..\..\Build\install.ps1" Pack="true" PackagePath="tools\install.ps1" />
   </ItemGroup>
   <PropertyGroup Condition="'$(TargetFramework)'=='net45'">
     <AssemblyTitle>Json.NET</AssemblyTitle>

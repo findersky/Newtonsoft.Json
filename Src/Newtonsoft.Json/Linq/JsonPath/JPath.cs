@@ -647,6 +647,11 @@ namespace Newtonsoft.Json.Linq.JsonPath
                     return true;
                 }
             }
+            else if (currentChar == '/')
+            {
+                value = ReadRegexString();
+                return true;
+            }
 
             value = null;
             return false;
@@ -712,6 +717,49 @@ namespace Newtonsoft.Json.Linq.JsonPath
             throw new JsonException("Path ended with an open string.");
         }
 
+        private string ReadRegexString()
+        {
+            int startIndex = _currentIndex;
+
+            _currentIndex++;
+            while (_currentIndex < _expression.Length)
+            {
+                char currentChar = _expression[_currentIndex];
+
+                // handle escaped / character
+                if (currentChar == '\\' && _currentIndex + 1 < _expression.Length)
+                {
+                    _currentIndex += 2;
+                }
+                else if (currentChar == '/')
+                {
+                    _currentIndex++;
+
+                    while (_currentIndex < _expression.Length)
+                    {
+                        currentChar = _expression[_currentIndex];
+
+                        if (char.IsLetter(currentChar))
+                        {
+                            _currentIndex++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    return _expression.Substring(startIndex, _currentIndex - startIndex);
+                }
+                else
+                {
+                    _currentIndex++;
+                }
+            }
+
+            throw new JsonException("Path ended with an open regex.");
+        }
+
         private bool Match(string s)
         {
             int currentPosition = _currentIndex;
@@ -742,6 +790,12 @@ namespace Newtonsoft.Json.Linq.JsonPath
             {
                 return QueryOperator.Equals;
             }
+
+            if (Match("=~"))
+            {
+                return QueryOperator.RegexEquals;
+            }
+
             if (Match("!=") || Match("<>"))
             {
                 return QueryOperator.NotEquals;

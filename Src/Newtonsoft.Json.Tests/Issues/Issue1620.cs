@@ -23,7 +23,8 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET20 || NET35)
+#if !(NET20 || NET35 || NET40)
+using Moq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -34,6 +35,12 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json.Utilities;
+#if PORTABLE && !NETSTANDARD2_0
+using BindingFlags = Newtonsoft.Json.Utilities.BindingFlags;
+#else
+using BindingFlags = System.Reflection.BindingFlags;
+#endif
 #if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
@@ -45,73 +52,52 @@ using NUnit.Framework;
 namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class Issue1598 : TestFixtureBase
+    public class Issue1620 : TestFixtureBase
     {
         [Test]
-        public void Test()
+        public void Test_SerializeMock()
         {
-            Activities activities = new Activities();
-            activities.List = new List<Activity>
-            {
-                new Activity
-                {
-                    Name = "An activity"
-                }
-            };
+            Mock<IFoo> mock = new Mock<IFoo>();
+            IFoo foo = mock.Object;
 
-            string json = JsonConvert.SerializeObject(activities, Formatting.Indented);
-            // note that this has been reverted back in 11.0.2 because it is causing compat issues
-            // https://github.com/JamesNK/Newtonsoft.Json/issues/1627
-            StringAssert.AreEqual(@"[
-  {
-    ""Name"": ""An activity""
-  }
-]", json);
+            string json = JsonConvert.SerializeObject(foo, new JsonSerializerSettings() { Converters = { new FooConverter() } });
+            Assert.AreEqual(@"""foo""", json);
         }
 
         [Test]
-        public void Test_SubClass()
+        public void Test_GetFieldsAndProperties()
         {
-            ActivitiesSubClass activities = new ActivitiesSubClass();
-            activities.List = new List<Activity>
+            Mock<IFoo> mock = new Mock<IFoo>();
+            IFoo foo = mock.Object;
+
+            List<MemberInfo> properties = ReflectionUtils.GetFieldsAndProperties(foo.GetType(), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).ToList();
+
+            Assert.AreEqual(1, properties.Count(p => p.Name == "Mock"));
+        }
+
+        public interface IFoo
+        {
+        }
+
+        public class Foo : IFoo
+        {
+        }
+
+        public class FooConverter : JsonConverter
+        {
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
             {
-                new Activity
-                {
-                    Name = "An activity"
-                }
-            };
-
-            string json = JsonConvert.SerializeObject(activities, Formatting.Indented);
-            StringAssert.AreEqual(@"[
-  {
-    ""Name"": ""An activity""
-  }
-]", json);
-        }
-
-        public class Activity
-        {
-            public string Name { get; set; }
-        }
-
-        public class ActivitiesSubClass : Activities
-        {
-        }
-
-        [DataContract]
-        public class Activities : IEnumerable<Activity>
-        {
-            [DataMember]
-            public List<Activity> List { get; set; }
-
-            public IEnumerator<Activity> GetEnumerator()
-            {
-                return List.GetEnumerator();
+                writer.WriteValue("foo");
             }
 
-            IEnumerator IEnumerable.GetEnumerator()
+            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
             {
-                return GetEnumerator();
+                return new Foo();
+            }
+
+            public override bool CanConvert(Type objectType)
+            {
+                return typeof(IFoo).GetTypeInfo().IsAssignableFrom(objectType);
             }
         }
     }

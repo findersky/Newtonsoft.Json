@@ -30,6 +30,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Newtonsoft.Json.Utilities
 {
@@ -149,6 +150,31 @@ namespace Newtonsoft.Json.Utilities
             }
 
             return value.ToString();
+        }
+
+        internal static RegexOptions GetRegexOptions(string optionsText)
+        {
+            RegexOptions options = RegexOptions.None;
+            foreach (char c in optionsText)
+            {
+                switch (c)
+                {
+                    case 'i':
+                        options |= RegexOptions.IgnoreCase;
+                        break;
+                    case 'm':
+                        options |= RegexOptions.Multiline;
+                        break;
+                    case 's':
+                        options |= RegexOptions.Singleline;
+                        break;
+                    case 'x':
+                        options |= RegexOptions.ExplicitCapture;
+                        break;
+                }
+            }
+
+            return options;
         }
     }
 }

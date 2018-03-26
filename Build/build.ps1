@@ -1,8 +1,8 @@
 ﻿properties {
-  $zipFileName = "Json110r1.zip"
+  $zipFileName = "Json110r2.zip"
   $majorVersion = "11.0"
-  $majorWithReleaseVersion = "11.0.1"
-  $nugetPrerelease = "beta3"
+  $majorWithReleaseVersion = "11.0.2"
+  $nugetPrerelease = $null
   $version = GetVersion $majorWithReleaseVersion
   $packageId = "Newtonsoft.Json"
   $signAssemblies = $false
@@ -82,7 +82,6 @@ task Build -depends Clean {
   robocopy $sourceDir $workingSourceDir /MIR /NFL /NDL /NP /XD bin obj TestResults AppPackages $packageDirs .vs artifacts /XF *.suo *.user *.lock.json | Out-Default
   Copy-Item -Path $baseDir\LICENSE.md -Destination $workingDir\
   mkdir "$workingDir\Build" -Force
-  Copy-Item -Path $buildDir\install.ps1 -Destination $workingDir\Build\
 
   $xml = [xml](Get-Content "$workingSourceDir\Newtonsoft.Json\Newtonsoft.Json.csproj")
   Edit-XmlNodes -doc $xml -xpath "/Project/PropertyGroup/PackageId" -value $packageId
