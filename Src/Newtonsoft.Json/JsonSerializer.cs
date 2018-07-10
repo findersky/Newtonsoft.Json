@@ -788,7 +788,7 @@ namespace Newtonsoft.Json
         /// <summary>
         /// Populates the JSON values onto the target object.
         /// </summary>
-        /// <param name="reader">The <see cref="TextReader"/> that contains the JSON structure to reader values from.</param>
+        /// <param name="reader">The <see cref="TextReader"/> that contains the JSON structure to read values from.</param>
         /// <param name="target">The target object to populate values onto.</param>
         public void Populate(TextReader reader, object target)
         {
@@ -798,7 +798,7 @@ namespace Newtonsoft.Json
         /// <summary>
         /// Populates the JSON values onto the target object.
         /// </summary>
-        /// <param name="reader">The <see cref="JsonReader"/> that contains the JSON structure to reader values from.</param>
+        /// <param name="reader">The <see cref="JsonReader"/> that contains the JSON structure to read values from.</param>
         /// <param name="target">The target object to populate values onto.</param>
         public void Populate(JsonReader reader, object target)
         {
@@ -974,9 +974,9 @@ namespace Newtonsoft.Json
 
             if (reader is JsonTextReader textReader)
             {
-                if (_contractResolver is DefaultContractResolver resolver)
+                if (textReader.PropertyNameTable == null && _contractResolver is DefaultContractResolver resolver)
                 {
-                    textReader.NameTable = resolver.GetNameTable();
+                    textReader.PropertyNameTable = resolver.GetNameTable();
                 }
             }
         }
@@ -1009,9 +1009,10 @@ namespace Newtonsoft.Json
                 reader.DateFormatString = previousDateFormatString;
             }
 
-            if (reader is JsonTextReader textReader)
+            if (reader is JsonTextReader textReader && textReader.PropertyNameTable != null &&
+                _contractResolver is DefaultContractResolver resolver && textReader.PropertyNameTable == resolver.GetNameTable())
             {
-                textReader.NameTable = null;
+                textReader.PropertyNameTable = null;
             }
         }
 

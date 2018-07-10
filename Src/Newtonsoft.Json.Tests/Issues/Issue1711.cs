@@ -1,4 +1,4 @@
-#region License
+﻿#region License
 // Copyright (c) 2007 James Newton-King
 //
 // Permission is hereby granted, free of charge, to any person
@@ -24,33 +24,45 @@
 #endregion
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.Serialization;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json.Utilities;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
+using NUnit.Framework;
+#endif
 
-namespace Newtonsoft.Json.Schema
+namespace Newtonsoft.Json.Tests.Issues
 {
-    /// <summary>
-    /// <para>
-    /// Specifies undefined schema Id handling options for the <see cref="JsonSchemaGenerator"/>.
-    /// </para>
-    /// <note type="caution">
-    /// JSON Schema validation has been moved to its own package. See <see href="https://www.newtonsoft.com/jsonschema">https://www.newtonsoft.com/jsonschema</see> for more details.
-    /// </note>
-    /// </summary>
-    [Obsolete("JSON Schema validation has been moved to its own package. See https://www.newtonsoft.com/jsonschema for more details.")]
-    public enum UndefinedSchemaIdHandling
+    [TestFixture]
+    public class Issue1711 : TestFixtureBase
     {
-        /// <summary>
-        /// Do not infer a schema Id.
-        /// </summary>
-        None = 0,
+        [Test]
+        public void Test_Raw()
+        {
+            FooClass c = JsonConvert.DeserializeObject<FooClass>(@"{ ""Value"" : 96.014e-05 }");
+            Assert.AreEqual(0.00096014m, c.Value);
+        }
 
-        /// <summary>
-        /// Use the .NET type name as the schema Id.
-        /// </summary>
-        UseTypeName = 1,
+        [Test]
+        public void Test_String()
+        {
+            FooClass c = JsonConvert.DeserializeObject<FooClass>(@"{ ""Value"" : ""96.014e-05"" }");
+            Assert.AreEqual(0.00096014m, c.Value);
+        }
 
-        /// <summary>
-        /// Use the assembly qualified .NET type name as the schema Id.
-        /// </summary>
-        UseAssemblyQualifiedName = 2,
+        public class FooClass
+        {
+            public decimal? Value { get; set; }
+        }
     }
 }

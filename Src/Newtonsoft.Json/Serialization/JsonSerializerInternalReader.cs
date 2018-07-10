@@ -953,13 +953,21 @@ namespace Newtonsoft.Json.Serialization
 
                         if (contract.IsEnum)
                         {
-                            if (value is string)
+                            if (value is string s)
                             {
-                                return EnumUtils.ParseEnum(contract.NonNullableUnderlyingType, value.ToString(), false);
+                                return EnumUtils.ParseEnum(contract.NonNullableUnderlyingType, s, false);
                             }
                             if (ConvertUtils.IsInteger(primitiveContract.TypeCode))
                             {
                                 return Enum.ToObject(contract.NonNullableUnderlyingType, value);
+                            }
+                        }
+                        else if (contract.NonNullableUnderlyingType == typeof(DateTime))
+                        {
+                            // use DateTimeUtils because Convert.ChangeType does not set DateTime.Kind correctly
+                            if (value is string s && DateTimeUtils.TryParseDateTime(s, reader.DateTimeZoneHandling, reader.DateFormatString, reader.Culture, out DateTime dt))
+                            {
+                                return DateTimeUtils.EnsureDateTime(dt, reader.DateTimeZoneHandling);
                             }
                         }
 
@@ -1704,6 +1712,11 @@ namespace Newtonsoft.Json.Serialization
             if (!finished)
             {
                 ThrowUnexpectedEndException(reader, contract, serializationInfo, "Unexpected end when deserializing object.");
+            }
+
+            if (!contract.IsInstantiable)
+            {
+                throw JsonSerializationException.Create(reader, "Could not create an instance of type {0}. Type is an interface or abstract class and cannot be instantiated.".FormatWith(CultureInfo.InvariantCulture, contract.UnderlyingType));
             }
 
             if (contract.ISerializableCreator == null)
