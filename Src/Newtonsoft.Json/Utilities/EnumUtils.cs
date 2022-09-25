@@ -35,6 +35,9 @@ using System.Linq;
 #endif
 using System.Reflection;
 using System.Text;
+using Newtonsoft.Json.Serialization;
+using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Newtonsoft.Json.Utilities
 {
@@ -43,26 +46,30 @@ namespace Newtonsoft.Json.Utilities
         private const char EnumSeparatorChar = ',';
         private const string EnumSeparatorString = ", ";
 
-        private static readonly ThreadSafeStore<Type, EnumInfo> ValuesAndNamesPerEnum = new ThreadSafeStore<Type, EnumInfo>(InitializeValuesAndNames);
+        private static readonly ThreadSafeStore<StructMultiKey<Type, NamingStrategy?>, EnumInfo> ValuesAndNamesPerEnum = new ThreadSafeStore<StructMultiKey<Type, NamingStrategy?>, EnumInfo>(InitializeValuesAndNames);
 
-        private static EnumInfo InitializeValuesAndNames(Type enumType)
+        private static EnumInfo InitializeValuesAndNames(StructMultiKey<Type, NamingStrategy?> key)
         {
+            Type enumType = key.Value1;
             string[] names = Enum.GetNames(enumType);
             string[] resolvedNames = new string[names.Length];
             ulong[] values = new ulong[names.Length];
+            bool hasSpecifiedName;
 
             for (int i = 0; i < names.Length; i++)
             {
                 string name = names[i];
-                FieldInfo f = enumType.GetField(name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
-                values[i] = ToUInt64(f.GetValue(null));
+                FieldInfo f = enumType.GetField(name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!;
+                values[i] = ToUInt64(f.GetValue(null)!);
 
                 string resolvedName;
 #if HAVE_DATA_CONTRACTS
-                resolvedName = f.GetCustomAttributes(typeof(EnumMemberAttribute), true)
+                string? specifiedName = f.GetCustomAttributes(typeof(EnumMemberAttribute), true)
                          .Cast<EnumMemberAttribute>()
                          .Select(a => a.Value)
-                         .SingleOrDefault() ?? f.Name;
+                         .SingleOrDefault();
+                hasSpecifiedName = specifiedName != null;
+                resolvedName = specifiedName ?? name;
 
                 if (Array.IndexOf(resolvedNames, resolvedName, 0, i) != -1)
                 {
@@ -70,9 +77,12 @@ namespace Newtonsoft.Json.Utilities
                 }
 #else
                 resolvedName = name;
+                hasSpecifiedName = false;
 #endif
 
-                resolvedNames[i] = resolvedName;
+                resolvedNames[i] = key.Value2 != null
+                    ? key.Value2.GetPropertyName(resolvedName, hasSpecifiedName)
+                    : resolvedName;
             }
 
             bool isFlags = enumType.IsDefined(typeof(FlagsAttribute), false);
@@ -107,15 +117,22 @@ namespace Newtonsoft.Json.Utilities
 
             if (selectedFlagsValues.Count == 0 && enumNameValues.Values.Any(v => v == 0))
             {
-                selectedFlagsValues.Add(default(T));
+                selectedFlagsValues.Add(default);
             }
 
             return selectedFlagsValues;
         }
 
-        public static bool TryToString(Type enumType, object value, bool camelCaseText, out string name)
+        // Used by Newtonsoft.Json.Schema
+        private static CamelCaseNamingStrategy _camelCaseNamingStrategy = new CamelCaseNamingStrategy();
+        public static bool TryToString(Type enumType, object value, bool camelCase, [NotNullWhen(true)]out string? name)
         {
-            EnumInfo enumInfo = ValuesAndNamesPerEnum.Get(enumType);
+            return TryToString(enumType, value, camelCase ? _camelCaseNamingStrategy : null, out name);
+        }
+
+        public static bool TryToString(Type enumType, object value, NamingStrategy? namingStrategy, [NotNullWhen(true)]out string? name)
+        {
+            EnumInfo enumInfo = ValuesAndNamesPerEnum.Get(new StructMultiKey<Type, NamingStrategy?>(enumType, namingStrategy));
             ulong v = ToUInt64(value);
 
             if (!enumInfo.IsFlags)
@@ -124,11 +141,6 @@ namespace Newtonsoft.Json.Utilities
                 if (index >= 0)
                 {
                     name = enumInfo.ResolvedNames[index];
-                    if (camelCaseText)
-                    {
-                        name = StringUtils.ToCamelCase(name);
-                    }
-
                     return true;
                 }
 
@@ -138,12 +150,12 @@ namespace Newtonsoft.Json.Utilities
             }
             else // These are flags OR'ed together (We treat everything as unsigned types)
             {
-                name = InternalFlagsFormat(enumInfo, v, camelCaseText);
+                name = InternalFlagsFormat(enumInfo, v);
                 return name != null;
             }
         }
 
-        private static String InternalFlagsFormat(EnumInfo entry, ulong result, bool camelCaseText)
+        private static string? InternalFlagsFormat(EnumInfo entry, ulong result)
         {
             string[] resolvedNames = entry.ResolvedNames;
             ulong[] values = entry.Values;
@@ -172,14 +184,14 @@ namespace Newtonsoft.Json.Utilities
                     }
 
                     string resolvedName = resolvedNames[index];
-                    sb.Insert(0, camelCaseText ? StringUtils.ToCamelCase(resolvedName) : resolvedName);
+                    sb.Insert(0, resolvedName);
                     firstTime = false;
                 }
 
                 index--;
             }
 
-            string returnString;
+            string? returnString;
             if (result != 0)
             {
                 // We were unable to represent this number as a bitwise or of valid flags
@@ -191,10 +203,6 @@ namespace Newtonsoft.Json.Utilities
                 if (values.Length > 0 && values[0] == 0)
                 {
                     returnString = resolvedNames[0]; // Zero was one of the enum values.
-                    if (camelCaseText)
-                    {
-                        returnString = StringUtils.ToCamelCase(returnString);
-                    }
                 }
                 else
                 {
@@ -211,7 +219,7 @@ namespace Newtonsoft.Json.Utilities
 
         public static EnumInfo GetEnumValuesAndNames(Type enumType)
         {
-            return ValuesAndNamesPerEnum.Get(enumType);
+            return ValuesAndNamesPerEnum.Get(new StructMultiKey<Type, NamingStrategy?>(enumType, null));
         }
 
         private static ulong ToUInt64(object value)
@@ -247,7 +255,7 @@ namespace Newtonsoft.Json.Utilities
             }
         }
 
-        public static object ParseEnum(Type enumType, string value, bool disallowNumber)
+        public static object ParseEnum(Type enumType, NamingStrategy? namingStrategy, string value, bool disallowNumber)
         {
             ValidationUtils.ArgumentNotNull(enumType, nameof(enumType));
             ValidationUtils.ArgumentNotNull(value, nameof(value));
@@ -257,7 +265,7 @@ namespace Newtonsoft.Json.Utilities
                 throw new ArgumentException("Type provided must be an Enum.", nameof(enumType));
             }
 
-            EnumInfo entry = ValuesAndNamesPerEnum.Get(enumType);
+            EnumInfo entry = ValuesAndNamesPerEnum.Get(new StructMultiKey<Type, NamingStrategy?>(enumType, namingStrategy));
             string[] enumNames = entry.Names;
             string[] resolvedNames = entry.ResolvedNames;
             ulong[] enumValues = entry.Values;
@@ -290,7 +298,7 @@ namespace Newtonsoft.Json.Utilities
                 Type underlyingType = Enum.GetUnderlyingType(enumType);
 
                 value = value.Trim();
-                object temp = null;
+                object? temp = null;
 
                 try
                 {

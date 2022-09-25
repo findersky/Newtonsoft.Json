@@ -35,6 +35,8 @@ using System.Globalization;
 using Newtonsoft.Json.Utilities;
 using Newtonsoft.Json.Linq;
 
+#nullable disable
+
 namespace Newtonsoft.Json.Schema
 {
     [Obsolete("JSON Schema validation has been moved to its own package. See https://www.newtonsoft.com/jsonschema for more details.")]
@@ -87,7 +89,10 @@ namespace Newtonsoft.Json.Schema
 
         private string UnescapeReference(string reference)
         {
-            return Uri.UnescapeDataString(reference).Replace("~1", "/").Replace("~0", "~");
+            string unescapedReference = Uri.UnescapeDataString(reference);
+            unescapedReference = StringUtils.Replace(unescapedReference, "~1", "/");
+            unescapedReference = StringUtils.Replace(unescapedReference, "~0", "~");
+            return unescapedReference;
         }
 
         private JsonSchema ResolveReferences(JsonSchema schema)
@@ -120,8 +125,7 @@ namespace Newtonsoft.Json.Schema
                             }
                             else if (currentToken.Type == JTokenType.Array || currentToken.Type == JTokenType.Constructor)
                             {
-                                int index;
-                                if (int.TryParse(part, out index) && index >= 0 && index < currentToken.Count())
+                                if (int.TryParse(part, out int index) && index >= 0 && index < currentToken.Count())
                                 {
                                     currentToken = currentToken[index];
                                 }
@@ -206,14 +210,12 @@ namespace Newtonsoft.Json.Schema
 
         private JsonSchema BuildSchema(JToken token)
         {
-            JObject schemaObject = token as JObject;
-            if (schemaObject == null)
+            if (!(token is JObject schemaObject))
             {
                 throw JsonException.Create(token, token.Path, "Expected object while parsing schema object, got {0}.".FormatWith(CultureInfo.InvariantCulture, token.Type));
             }
 
-            JToken referenceToken;
-            if (schemaObject.TryGetValue(JsonTypeReflector.RefPropertyName, out referenceToken))
+            if (schemaObject.TryGetValue(JsonTypeReflector.RefPropertyName, out JToken referenceToken))
             {
                 JsonSchema deferredSchema = new JsonSchema();
                 deferredSchema.DeferredReference = (string)referenceToken;
@@ -221,15 +223,18 @@ namespace Newtonsoft.Json.Schema
                 return deferredSchema;
             }
 
-            string location = token.Path.Replace(".", "/").Replace("[", "/").Replace("]", string.Empty);
-            if (!string.IsNullOrEmpty(location))
+            string location = token.Path;
+            location = StringUtils.Replace(location, ".", "/");
+            location = StringUtils.Replace(location, "[", "/");
+            location = StringUtils.Replace(location, "]", string.Empty);
+
+            if (!StringUtils.IsNullOrEmpty(location))
             {
                 location = "/" + location;
             }
             location = "#" + location;
 
-            JsonSchema existingSchema;
-            if (_documentSchemas.TryGetValue(location, out existingSchema))
+            if (_documentSchemas.TryGetValue(location, out JsonSchema existingSchema))
             {
                 return existingSchema;
             }
@@ -475,8 +480,7 @@ namespace Newtonsoft.Json.Schema
 
         internal static JsonSchemaType MapType(string type)
         {
-            JsonSchemaType mappedType;
-            if (!JsonSchemaConstants.JsonSchemaTypeMapping.TryGetValue(type, out mappedType))
+            if (!JsonSchemaConstants.JsonSchemaTypeMapping.TryGetValue(type, out JsonSchemaType mappedType))
             {
                 throw new JsonException("Invalid JSON schema type: {0}".FormatWith(CultureInfo.InvariantCulture, type));
             }

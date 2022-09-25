@@ -23,7 +23,10 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-using Newtonsoft.Json.Linq;
+#if !(NET20 || NET35 || NET40)
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 #if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
@@ -31,48 +34,32 @@ using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
 #endif
-using System;
-using System.Collections.Generic;
-#if NET20
-using Newtonsoft.Json.Utilities.LinqBridge;
-#else
-using System.Linq;
-#endif
-using System.Text;
 
-namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
+namespace Newtonsoft.Json.Tests.Issues
 {
     [TestFixture]
-    public class QueryJsonSelectTokenEscaped : TestFixtureBase
+    public class Issue1984
     {
         [Test]
-        public void Example()
+        public void Test_NullValue()
         {
-            #region Usage
-            JObject o = JObject.Parse(@"{
-              'Space Invaders': 'Taito',
-              'Doom ]|[': 'id',
-              ""Yar's Revenge"": 'Atari',
-              'Government ""Intelligence""': 'Make-Believe'
-            }");
+            var actual = JsonConvert.DeserializeObject<A>("{ Values: null}");
+            Assert.IsNotNull(actual);
+            Assert.IsNull(actual.Values);
+        }
 
-            string spaceInvaders = (string)o.SelectToken("['Space Invaders']");
-            // Taito
-
-            string doom3 = (string)o.SelectToken("['Doom ]|[']");
-            // id
-
-            string yarsRevenge = (string)o.SelectToken("['Yar\\'s Revenge']");
-            // Atari
-
-            string governmentIntelligence = (string)o.SelectToken("['Government \"Intelligence\"']");
-            // Make-Believe
-            #endregion
-
-            Assert.AreEqual("Taito", spaceInvaders);
-            Assert.AreEqual("id", doom3);
-            Assert.AreEqual("Atari", yarsRevenge);
-            Assert.AreEqual("Make-Believe", governmentIntelligence);
+        [Test]
+        public void Test_WithoutValue()
+        {
+            var actual = JsonConvert.DeserializeObject<A>("{ }");
+            Assert.IsNotNull(actual);
+            Assert.IsNull(actual.Values);
+        }
+        
+        public class A
+        {
+            public ImmutableArray<string>? Values { get; set; }
         }
     }
 }
+#endif

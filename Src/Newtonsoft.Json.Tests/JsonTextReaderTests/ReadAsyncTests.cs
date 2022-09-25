@@ -28,7 +28,7 @@
 using System;
 using System.Globalization;
 using Newtonsoft.Json.Linq;
-#if !PORTABLE || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !PORTABLE || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
 using System.Numerics;
 #endif
 using System.Text;
@@ -84,11 +84,12 @@ namespace Newtonsoft.Json.Tests.JsonTextReaderTests
 
             await ExceptionAssert.ThrowsAsync<JsonReaderException>(
                 () => token.CreateReader().ReadAsDecimalAsync(),
-                "Could not convert to decimal: 1.79769313486232E+308. Path ''."
+                "Could not convert to decimal: 1.79769313486232E+308. Path ''.",
+                "Could not convert to decimal: 1.7976931348623157E+308. Path ''."
             );
         }
 
-#if !(NET20 || NET35 || PORTABLE40 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE40 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public async Task ReadAsInt32Async_BigIntegerValue_Success()
         {
@@ -131,7 +132,7 @@ namespace Newtonsoft.Json.Tests.JsonTextReaderTests
                 "Unexpected character encountered while parsing value: u. Path '', line 1, position 1.");
         }
 
-#if !(PORTABLE || PORTABLE40 || NET35 || NET20) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(PORTABLE || PORTABLE40 || NET35 || NET20) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public async Task ReadAsBooleanAsync()
         {
@@ -1244,7 +1245,7 @@ second line
 third line", jsonTextReader.Value);
         }
 
-#if !PORTABLE || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !PORTABLE || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public async Task ReadBigIntegerAsync()
         {
@@ -1752,7 +1753,68 @@ third line", jsonTextReader.Value);
             Assert.IsTrue(reader.ReadAsInt32Async(token).IsCanceled);
             Assert.IsTrue(reader.ReadAsStringAsync(token).IsCanceled);
         }
+
+        [Test]
+        public async Task ThrowOnDuplicateKeysDeserializingAsync()
+        {
+            string json = @"
+                {
+                    ""a"": 1,
+                    ""b"": [
+                        {
+                            ""c"": {
+                                ""d"": 1,
+                                ""d"": ""2""
+                            }
+                        }
+                    ]
+                }
+            ";
+
+            JsonLoadSettings settings = new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error };
+
+            JsonTextReader reader = new JsonTextReader(new StringReader(json));
+            await ExceptionAssert.ThrowsAsync<JsonReaderException>(async () => await JToken.ReadFromAsync(reader, settings));
+        }
+
+        [Test]
+        public async Task MaxDepth_GreaterThanDefaultAsync()
+        {
+            string json = GetNestedJson(150);
+
+            JsonTextReader reader = new JsonTextReader(new StringReader(json));
+            reader.MaxDepth = 150;
+
+            while (await reader.ReadAsync())
+            {
+            }
+        }
+
+        [Test]
+        public async Task MaxDepth_NullAsync()
+        {
+            string json = GetNestedJson(150);
+
+            JsonTextReader reader = new JsonTextReader(new StringReader(json));
+            reader.MaxDepth = null;
+
+            while (await reader.ReadAsync())
+            {
+            }
+        }
+
+        [Test]
+        public async Task MaxDepth_MaxValueAsync()
+        {
+            string json = GetNestedJson(150);
+
+            JsonTextReader reader = new JsonTextReader(new StringReader(json));
+            reader.MaxDepth = int.MaxValue;
+
+            while (await reader.ReadAsync())
+            {
+            }
+        }
     }
 }
-
 #endif

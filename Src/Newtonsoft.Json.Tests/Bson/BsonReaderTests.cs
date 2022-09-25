@@ -31,7 +31,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Tests.TestObjects;
-#if !(NET20 || NET35 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
 using System.Numerics;
 #endif
 using System.Text;
@@ -67,6 +67,53 @@ namespace Newtonsoft.Json.Tests.Bson
             JObject o = (JObject)JToken.ReadFrom(reader);
 
             Assert.AreEqual("1", (string)o["$id"]);
+        }
+
+        public class MyTest
+        {
+            public DateTime TimeStamp { get; set; }
+            public string UserName { get; set; }
+            public MemoryStream Blob { get; set; }
+        }
+
+        [Test]
+        public void Bson_SupportMultipleContent()
+        {
+            MemoryStream myStream = new MemoryStream();
+            BsonWriter writer = new BsonWriter(myStream);
+            JsonSerializer serializer = new JsonSerializer();
+            MyTest tst1 = new MyTest
+            {
+                TimeStamp = new DateTime(2000, 12, 20, 12, 59, 59, DateTimeKind.Utc),
+                UserName = "Joe Doe"
+            };
+            MyTest tst2 = new MyTest
+            {
+                TimeStamp = new DateTime(2010, 12, 20, 12, 59, 59, DateTimeKind.Utc),
+                UserName = "Bob"
+            };
+            serializer.Serialize(writer, tst1);
+            serializer.Serialize(writer, tst2);
+
+            myStream.Seek(0, SeekOrigin.Begin);
+
+            BsonReader reader = new BsonReader(myStream)
+            {
+                SupportMultipleContent = true,
+                DateTimeKindHandling = DateTimeKind.Utc
+            };
+
+            MyTest tst1A = serializer.Deserialize<MyTest>(reader);
+
+            reader.Read();
+
+            MyTest tst2A = serializer.Deserialize<MyTest>(reader);
+
+            Assert.AreEqual(tst1.UserName, tst1A.UserName);
+            Assert.AreEqual(tst1.TimeStamp, tst1A.TimeStamp);
+
+            Assert.AreEqual(tst2.UserName, tst2A.UserName);
+            Assert.AreEqual(tst2.TimeStamp, tst2A.TimeStamp);
         }
 
         [Test]
@@ -1448,7 +1495,7 @@ namespace Newtonsoft.Json.Tests.Bson
             Assert.AreEqual(badText, (string)o["test"]);
         }
 
-#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         public class BigIntegerTestClass
         {
             public BigInteger Blah { get; set; }

@@ -36,9 +36,9 @@ namespace Newtonsoft.Json.Serialization
     {
         private readonly JsonSerializerInternalReader _reader;
         private readonly JsonISerializableContract _contract;
-        private readonly JsonProperty _member;
+        private readonly JsonProperty? _member;
 
-        public JsonFormatterConverter(JsonSerializerInternalReader reader, JsonISerializableContract contract, JsonProperty member)
+        public JsonFormatterConverter(JsonSerializerInternalReader reader, JsonISerializableContract contract, JsonProperty? member)
         {
             ValidationUtils.ArgumentNotNull(reader, nameof(reader));
             ValidationUtils.ArgumentNotNull(contract, nameof(contract));
@@ -53,7 +53,7 @@ namespace Newtonsoft.Json.Serialization
             ValidationUtils.ArgumentNotNull(value, nameof(value));
 
             JValue v = (JValue)value;
-            return (T)System.Convert.ChangeType(v.Value, typeof(T), CultureInfo.InvariantCulture);
+            return (T)System.Convert.ChangeType(v.Value, typeof(T), CultureInfo.InvariantCulture)!;
         }
 
         public object Convert(object value, Type type)
@@ -65,19 +65,16 @@ namespace Newtonsoft.Json.Serialization
                 throw new ArgumentException("Value is not a JToken.", nameof(value));
             }
 
-            return _reader.CreateISerializableItem(token, type, _contract, _member);
+            return _reader.CreateISerializableItem(token, type, _contract, _member)!;
         }
 
         public object Convert(object value, TypeCode typeCode)
         {
             ValidationUtils.ArgumentNotNull(value, nameof(value));
 
-            if (value is JValue)
-            {
-                value = ((JValue)value).Value;
-            }
+            object? resolvedValue = (value is JValue v) ? v.Value : value;
 
-            return System.Convert.ChangeType(value, typeCode, CultureInfo.InvariantCulture);
+            return System.Convert.ChangeType(resolvedValue, typeCode, CultureInfo.InvariantCulture)!;
         }
 
         public bool ToBoolean(object value)

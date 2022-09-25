@@ -25,7 +25,7 @@
 
 using System;
 using System.Collections.Generic;
-#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
 using System.Numerics;
 #endif
 using System.Text;
@@ -120,7 +120,7 @@ namespace Newtonsoft.Json.Tests.Linq
                 jsonWriter.WriteValue("DVD read/writer");
                 Assert.AreEqual(WriteState.Array, jsonWriter.WriteState);
 
-#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
                 jsonWriter.WriteValue(new BigInteger(123));
                 Assert.AreEqual(WriteState.Array, jsonWriter.WriteState);
 #endif
@@ -172,7 +172,7 @@ namespace Newtonsoft.Json.Tests.Linq
                 Assert.AreEqual(WriteState.Array, jsonWriter.WriteState);
                 Assert.AreEqual(a[a.Count - 1], jsonWriter.CurrentToken);
 
-#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
                 jsonWriter.WriteValue(new BigInteger(123));
                 Assert.AreEqual(WriteState.Array, jsonWriter.WriteState);
                 Assert.AreEqual(a[a.Count - 1], jsonWriter.CurrentToken);
@@ -205,7 +205,7 @@ namespace Newtonsoft.Json.Tests.Linq
   /*fail*/]", writer.Token.ToString());
         }
 
-#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40) || NETSTANDARD1_3 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public void WriteBigInteger()
         {
@@ -391,6 +391,29 @@ namespace Newtonsoft.Json.Tests.Linq
             DateTime dt = (DateTime)value.Value;
 
             Assert.AreEqual(new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc), dt);
+        }
+
+        [Test]
+        public void WriteTokenDirect()
+        {
+            JToken token;
+
+            using (JTokenWriter jsonWriter = new JTokenWriter())
+            {
+                jsonWriter.WriteToken(JsonToken.StartArray);
+                jsonWriter.WriteToken(JsonToken.Integer, 1);
+                jsonWriter.WriteToken(JsonToken.StartObject);
+                jsonWriter.WriteToken(JsonToken.PropertyName, "integer");
+                jsonWriter.WriteToken(JsonToken.Integer, int.MaxValue);
+                jsonWriter.WriteToken(JsonToken.PropertyName, "null-string");
+                jsonWriter.WriteToken(JsonToken.String, null);
+                jsonWriter.WriteToken(JsonToken.EndObject);
+                jsonWriter.WriteToken(JsonToken.EndArray);
+
+                token = jsonWriter.Token;
+            }
+
+            Assert.AreEqual(@"[1,{""integer"":2147483647,""null-string"":null}]", token.ToString(Formatting.None));
         }
     }
 }

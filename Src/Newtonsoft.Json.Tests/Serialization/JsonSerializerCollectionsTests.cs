@@ -61,7 +61,30 @@ namespace Newtonsoft.Json.Tests.Serialization
     [TestFixture]
     public class JsonSerializerCollectionsTests : TestFixtureBase
     {
-#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0
+#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0 || NET6_0_OR_GREATER
+        [Test]
+        public void DeserializeNonGenericListTypeAndReadOnlyListViaConstructor()
+        {
+            ConstructorCollectionContainer a = JsonConvert.DeserializeObject<ConstructorCollectionContainer>("{'a':1,'b':['aaa'],'c':['aaa']}");
+
+            Assert.AreEqual(1, a.A);
+            Assert.AreEqual(1, a.B.Count());
+            Assert.AreEqual("aaa", a.B.ElementAt(0));
+            Assert.AreEqual(0, a.C.Count());
+        }
+
+        public class ConstructorCollectionContainer
+        {
+            public int A { get; }
+            public IEnumerable<string> B { get; } = new SortedSet<string>();
+            public IEnumerable<string> C { get; } = new List<string>().AsReadOnly();
+
+            public ConstructorCollectionContainer(int a)
+            {
+                this.A = a;
+            }
+        }
+
         [Test]
         public void DeserializeConcurrentDictionaryWithNullValue()
         {
@@ -164,7 +187,11 @@ namespace Newtonsoft.Json.Tests.Serialization
         {
             Dictionary<float, int> dictionary = new Dictionary<float, int> { { float.MaxValue, 1 } };
             string output = JsonConvert.SerializeObject(dictionary);
+#if !(NETSTANDARD2_0 || NETSTANDARD1_3 || NET6_0_OR_GREATER)
             Assert.AreEqual(@"{""3.40282347E+38"":1}", output);
+#else
+            Assert.AreEqual(@"{""3.4028235E+38"":1}", output);
+#endif
 
             Dictionary<float, int> deserializedValue = JsonConvert.DeserializeObject<Dictionary<float, int>>(output);
             Assert.AreEqual(float.MaxValue, deserializedValue.First().Key);
@@ -276,7 +303,7 @@ namespace Newtonsoft.Json.Tests.Serialization
                 "Constructor for 'Newtonsoft.Json.Tests.Serialization.JsonSerializerCollectionsTests+TestCollectionBadIEnumerableParameter' must have no parameters or a single parameter that implements 'System.Collections.Generic.IEnumerable`1[System.Int32]'.");
         }
 
-#if !(DNXCORE50 || PORTABLE) || NETSTANDARD2_0
+#if !(DNXCORE50 || PORTABLE) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         public class TestCollectionNonGeneric : ArrayList
         {
             [JsonConstructor]
@@ -389,7 +416,7 @@ namespace Newtonsoft.Json.Tests.Serialization
                 "Constructor for 'Newtonsoft.Json.Tests.Serialization.JsonSerializerCollectionsTests+TestDictionaryBadIEnumerableParameter' must have no parameters or a single parameter that implements 'System.Collections.Generic.IEnumerable`1[System.Collections.Generic.KeyValuePair`2[System.String,System.Int32]]'.");
         }
 
-#if !(DNXCORE50 || PORTABLE) || NETSTANDARD2_0
+#if !(DNXCORE50 || PORTABLE) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         public class TestDictionaryNonGeneric : Hashtable
         {
             [JsonConstructor]
@@ -412,7 +439,7 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 #endif
 
-#if !(DNXCORE50) || NETSTANDARD2_0
+#if !(DNXCORE50) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         public class NameValueCollectionTestClass
         {
             public NameValueCollection Collection { get; set; }
@@ -427,7 +454,7 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 #endif
 
-#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0
+#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         public class SomeObject
         {
             public string Text1 { get; set; }
@@ -462,7 +489,7 @@ namespace Newtonsoft.Json.Tests.Serialization
 
             string json = JsonConvert.SerializeObject(d, Formatting.Indented);
 
-            Assert.AreEqual(@"{
+            StringAssert.AreEqual(@"{
   ""key"": [
     {
       ""Text1"": ""value1""
@@ -1069,7 +1096,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(3, v2["Third"]);
         }
 
-#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0
+#if !(NET35 || NET20 || PORTABLE || PORTABLE40) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public void DeserializeConcurrentDictionary()
         {
@@ -1783,7 +1810,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(1, (int)((JObject)o.Data[2])["one"]);
         }
 
-#if !(DNXCORE50) || NETSTANDARD2_0
+#if !(DNXCORE50) || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public void SerializeArrayAsArrayList()
         {
@@ -2048,7 +2075,7 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 #endif
 
-#if !DNXCORE50 || NETSTANDARD2_0
+#if !DNXCORE50 || NETSTANDARD2_0 || NET6_0_OR_GREATER
         [Test]
         public void EmptyStringInHashtableIsDeserialized()
         {
@@ -2107,6 +2134,26 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(2, values.Count);
         }
 #endif
+
+        [Test]
+        public void DeserializeEmptyEnumerable_NoItems()
+        {
+            ValuesClass c = JsonConvert.DeserializeObject<ValuesClass>(@"{""Values"":[]}");
+            Assert.AreEqual(0, c.Values.Count());
+        }
+
+        [Test]
+        public void DeserializeEmptyEnumerable_HasItems()
+        {
+            ValuesClass c = JsonConvert.DeserializeObject<ValuesClass>(@"{""Values"":[""hello""]}");
+            Assert.AreEqual(1, c.Values.Count());
+            Assert.AreEqual("hello", c.Values.ElementAt(0));
+        }
+
+        public class ValuesClass
+        {
+            public IEnumerable<string> Values { get; set; } = Enumerable.Empty<string>();
+        }
 
         [Test]
         public void DeserializeConstructorWithReadonlyArrayProperty()

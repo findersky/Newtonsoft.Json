@@ -23,22 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if (NETSTANDARD2_0)
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Xml;
-using Newtonsoft.Json.Serialization;
-#if !NET20
-using System.Xml.Linq;
-#endif
 #if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
@@ -46,34 +31,49 @@ using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
 #endif
+using System;
+using System.Collections.Generic;
+#if NET20
+using Newtonsoft.Json.Utilities.LinqBridge;
+#else
+using System.Linq;
+#endif
+using System.Text;
 
-namespace Newtonsoft.Json.Tests.Issues
+namespace Newtonsoft.Json.Tests.Documentation.Samples.JsonPath
 {
     [TestFixture]
-    public class Issue1517 : TestFixtureBase
+    public class RegexQuery : TestFixtureBase
     {
         [Test]
-        public void Test()
+        public void Example()
         {
-            RSAParameters rsaParameters = new RSAParameters();
-            rsaParameters.D = new byte[] { 1, 2 };
-            rsaParameters.DP = new byte[] { 2, 4 };
-            rsaParameters.DQ = new byte[] { 5, 6 };
-            rsaParameters.Exponent = new byte[] { 7, 8 };
-            rsaParameters.InverseQ = new byte[] { 9, 10 };
-            rsaParameters.Modulus = new byte[] { 11, 12 };
-            rsaParameters.P = new byte[] { 13, 14 };
-            rsaParameters.Q = new byte[] { 15, 16 };
+            #region Usage
+            JArray packages = JArray.Parse(@"[
+              {
+                'PackageId': 'Newtonsoft.Json',
+                'Version': '11.0.1',
+                'ReleaseDate': '2018-02-17T00:00:00'
+              },
+              {
+                'PackageId': 'NUnit',
+                'Version': '3.9.0',
+                'ReleaseDate': '2017-11-10T00:00:00'
+              }
+            ]");
 
-            string json = JsonConvert.SerializeObject(rsaParameters, Formatting.Indented);
+            // Find Newtonsoft packages
+            List<JToken> newtonsoftPackages = packages.SelectTokens(@"$.[?(@.PackageId =~ /^Newtonsoft\.(.*)$/)]").ToList();
 
-            // a subset of values is serialized because of the NotSerializedAttribute
-            // https://msdn.microsoft.com/en-us/library/system.security.cryptography.rsaparameters.d(v=vs.110).aspx
-            StringAssert.AreEqual(@"{
-  ""Exponent"": ""Bwg="",
-  ""Modulus"": ""Cww=""
-}", json);
+            foreach (JToken item in newtonsoftPackages)
+            {
+                Console.WriteLine((string) item["PackageId"]);
+            }
+            // Newtonsoft.Json
+            #endregion
+
+            Assert.AreEqual(1, newtonsoftPackages.Count);
+            Assert.AreEqual("Newtonsoft.Json", (string)newtonsoftPackages[0]["PackageId"]);
         }
     }
 }
-#endif
